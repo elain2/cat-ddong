@@ -85,8 +85,8 @@
 
   function nickname(skipped) {
     say(skipped
-      ? '설문은 건너뛰고 랜덤으로 만들어 줄게! 네 이름이나 별명만 알려줘. 비워둬도 돼.'
-      : '마지막이야. 네 이름이나 별명을 알려줘. 고양이 옆에 붙여 줄게. 비워둬도 돼.');
+      ? '설문은 건너뛰고 랜덤으로 만들어 줄게! 고양이가 된 너를 뭐라고 부를까? 비워두면 내가 지어 줄게.'
+      : '마지막이야. 고양이가 된 너를 뭐라고 부를까? 네 이름이나 별명을 알려줘. 비워두면 내가 지어 줄게.');
     const input = el('input', { type: 'text', maxLength: 12, placeholder: '이름 / 별명 (선택)', className: 'input' });
     const go = () => summon(input.value);
     input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); });
@@ -106,7 +106,7 @@
 
   function result(cat, real) {   // real: 선물 착용 전의 원본(저장 객체)
     say(cat.egg ? '…어? 나랑 똑같이 생겼잖아냥! 이건 비밀이야.'
-      : (cat.owner ? `${cat.owner}, 새 친구가 왔어냥!` : '새 친구가 왔어냥!'));
+      : `${cat.owner ? cat.owner + ', ' : ''}고양이가 된 네 모습이야냥!`);
     const canvas = el('canvas', { width: Render.N, height: Render.N, className: 'cat' });
 
     const tags = el('div', { className: 'tags' }, [
@@ -132,7 +132,7 @@
       canvas,
       el('h2', { textContent: cat.name }),
       el('p', { className: 'title', textContent: cat.title }),
-      el('p', { className: 'owner', textContent: cat.owner ? `${cat.owner}의 고양이` : '' }),
+      el('p', { className: 'owner', textContent: cat.egg ? '' : '나의 페르소나 고양이' }),
       tags,
       reasons,
     ]);
@@ -286,7 +286,7 @@
       },
       onPick(actor) {
         if (actor.isMe) {
-          say(`${me.owner ? me.owner + '의 ' : '내 '}고양이 ${me.name}! ${me.title}`);
+          say(`${me.name}: 고양이가 된 나! ${me.title}`);
           return;
         }
         const c = actor.cat;
@@ -475,8 +475,8 @@
 
     renderSnack();
     say(gotDaily
-      ? `${me.owner ? me.owner + ', ' : ''}사랑방에 온 걸 환영해냥! 오늘의 간식 3개를 줬어. 밥그릇에 놓아봐.`
-      : `${me.owner ? me.owner + ', ' : ''}사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.`);
+      ? `${me.name}, 사랑방에 온 걸 환영해냥! 오늘의 간식 3개를 줬어. 밥그릇에 놓아봐.`
+      : `${me.name}, 사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.`);
     // 1초마다: 남은 시간 갱신 + 손님 교체/간식 종료 반영
     const timer = setInterval(() => { syncVisitors(); renderSnack(); }, 1000);
 
@@ -576,7 +576,7 @@
     }
 
     const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
-    const mine = el('button', { className: 'btn ghost', textContent: '내 고양이 보기', onclick: () => result(shown(), me) });
+    const mine = el('button', { className: 'btn ghost', textContent: '내 모습 보기', onclick: () => result(shown(), me) });
     const again = el('button', {
       className: 'btn ghost', textContent: '다시 하기',
       onclick: () => { store.remove(KEY_ME); intro(); },
@@ -584,11 +584,12 @@
     const rename = el('button', {
       className: 'btn ghost', textContent: '내 이름 바꾸기',
       onclick: () => {
-        const v = prompt('이름이나 별명을 알려줘 (12자까지)', me.owner || '');
+        const v = prompt('고양이가 된 너를 뭐라고 부를까? (12자까지)', me.owner || '');
         if (v === null) return;                       // 취소
         me.owner = Cat.cleanOwner(v);
+        me.name = me.owner || (me.egg ? '집사' : Cat.autoName(me.seed));   // 이름이 곧 고양이 이름
         store.set(KEY_ME, me);
-        say(me.owner ? `${me.owner}, 이름을 기억해 둘게!` : '이름을 지웠어.');
+        say(me.owner ? `${me.name}, 이제 그 이름으로 부를게!` : `이름을 지웠어. 새 이름은 ${me.name}!`);
       },
     });
 
@@ -603,5 +604,6 @@
   const saved = store.get(KEY_ME, null);
   if (saved && saved.accessory === 'headphones') saved.accessory = 'tie'; // 이름 변경 마이그레이션
   if (saved) Cat.withSignature(saved);   // 예전에 만든 고양이에도 호스트 표식을 붙인다
+  if (saved && saved.owner) saved.name = saved.owner;   // 예전에 만든 고양이: 입력한 이름이 곧 고양이 이름
   if (saved) room(saved); else intro();
 })();

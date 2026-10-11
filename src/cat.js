@@ -239,9 +239,15 @@
 
   function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
 
+  // 이름을 안 넣었을 때 시드로 지어 주는 이름
+  function autoName(seed) {
+    const r = rng(seed ^ 0x9e3779b9);
+    return pick(r, NAME_HEAD) + pick(r, NAME_TAIL);
+  }
+
   function finish(cat) {
-    const r = rng(cat.seed ^ 0x9e3779b9);
-    cat.name = pick(r, NAME_HEAD) + pick(r, NAME_TAIL);
+    // 설문 고양이는 '고양이가 된 나'다. 입력한 이름이 곧 고양이 이름이다.
+    cat.name = cat.owner || autoName(cat.seed);
     cat.title = TITLES[cat.energy][cat.social];
     if (cat.egg === 'zipsa') { cat.name = '집사'; cat.title = '사랑방의 집사 냥'; }
     return cat;
@@ -384,7 +390,7 @@
   }
 
   root.Cat = {
-    buildCat, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
