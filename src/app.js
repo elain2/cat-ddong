@@ -14,6 +14,8 @@
   const SNACK_MS = 30 * 60 * 1000;   // 간식 효과 시간 (손님 교체 주기와 같다)
   const SNACK_MAX = 10;
   const SNACK_CAP_MS = 2 * 60 * 60 * 1000;   // 연장해도 남은 시간은 최대 2시간
+  const KEY_GIFTS = 'cat-ddong.gifts';        // 가진 선물 id 목록
+  const KEY_TAKEN = 'cat-ddong.gift-taken';   // 이미 받은 선물 '슬롯:고양이id'
   const KEY_LOG = 'cat-ddong.log';   // 손님별 방문 기록 {id: {n, first, last, prev, slot}}
   const SLOT_MS = 30 * 60 * 1000;
   const BACKUP_PREFIX = 'CATDDONG1:';
@@ -83,7 +85,7 @@
     }, 1000);
   }
 
-  function result(cat) {
+  function result(cat, real) {   // real: 선물 착용 전의 원본(저장 객체)
     say(cat.owner ? `${cat.owner}, 새 친구가 왔어냥!` : '새 친구가 왔어냥!');
     const canvas = el('canvas', { width: Render.N, height: Render.N, className: 'cat' });
 
@@ -94,7 +96,7 @@
     const reasons = el('ul', { className: 'reasons' },
       Cat.reasonsOf(cat).map((t) => el('li', { textContent: t })));
 
-    const enter = el('button', { className: 'btn', textContent: '사랑방 입장 →', onclick: () => room(cat) });
+    const enter = el('button', { className: 'btn', textContent: '사랑방 입장 →', onclick: () => room(real || cat) });
     const save = el('button', {
       className: 'btn ghost', textContent: 'PNG로 저장',
       onclick: () => Render.toPngBlob(cat, (blob) => {
@@ -125,6 +127,7 @@
       met: store.get(KEY_MET, []),
       log: store.get(KEY_LOG, {}),
       snack: store.get(KEY_SNACK, {}),
+      gifts: store.get(KEY_GIFTS, []),
     };
     const bytes = new TextEncoder().encode(JSON.stringify(data));
     return BACKUP_PREFIX + btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
@@ -161,7 +164,9 @@
         daily: typeof s.daily === 'string' ? s.daily.slice(0, 12) : '',
         until: num(s.until),
       };
-      return { me, met, log, snack };
+      const gifts = Array.isArray(raw.gifts)
+        ? [...new Set(raw.gifts.filter((g) => Cat.GIFT_IDS.includes(g)))] : [];
+      return { me, met, log, snack, gifts };
     } catch (e) {
       return null;
     }
@@ -213,6 +218,19 @@
     const visitors = visitorIds();
     recordVisits(visitors);
     let visitorKey = `${slotNow()}:${visitors.join(',')}`;
+
+    // ---- 선물: 손님이 가끔 악세사리를 들고 온다. 받으면 선물함에 들어가고 내 고양이가 착용할 수 있다. ----
+    const owned = new Set((store.get(KEY_GIFTS, []) || []).filter((g) => Cat.GIFT_IDS.includes(g)));
+    const taken = new Set(store.get(KEY_TAKEN, []));
+    if (me.worn && !owned.has(me.worn)) me.worn = null;   // 선물함에 없는 걸 입고 있을 수 없다
+    // 착용 중이면 악세사리만 바꾼 복사본을 보여 준다. 원본(me)의 설문 악세사리는 그대로 둔다.
+    const shown = () => (me.worn ? Object.assign({}, me, { accessory: me.worn }) : me);
+    const giftAvailable = (id) => {
+      if (id === undefined) return null;
+      const slotId = slotNow();
+      if (taken.has(`${slotId}:${id}`)) return null;
+      return Cat.giftOf(id, slotId);
+    };
     const countMet = () => {
       const ids = [...met];
       return {
@@ -221,9 +239,10 @@
       };
     };
     const handle = Room.mount(canvas, {
-      me,
+      me: shown(),
       visitors,
       snackOn,
+      giftOf: giftAvailable,
       isCollected: (k) => met.has(k),
       onReact(kind, a, b) {
         const x = a.cat.name, y = b.cat.name;
@@ -264,6 +283,8 @@
           renderBook();
           renderSnack();
         }
+        const gid = giftAvailable(actor.poolIndex);
+        if (gid) takeGift(actor, gid);
       },
     });
 
@@ -281,6 +302,57 @@
     const bookTitle = el('h3', { className: 'book-title' });
     const bookHint = el('p', { className: 'book-hint' });
     const grid = el('div', { className: 'book' });
+    const giftTitle = el('h3', { className: 'book-title' });
+    const giftHint = el('p', { className: 'book-hint' });
+    const giftGrid = el('div', { className: 'book' });
+
+    function takeGift(actor, gid) {
+      taken.add(`${slotNow()}:${actor.poolIndex}`);
+      store.set(KEY_TAKEN, [...taken].slice(-200));
+      const label = Cat.ACC_LABEL[gid];
+      let extra;
+      if (owned.has(gid)) {                          // 이미 있으면 간식으로 바꿔 준다
+        snack.count = Math.min(SNACK_MAX, snack.count + 1);
+        saveSnack();
+        renderSnack();
+        extra = `🎁 ${label}! 이미 있어서 간식으로 바꿨어 (간식 +1)`;
+      } else {
+        owned.add(gid);
+        store.set(KEY_GIFTS, [...owned]);
+        extra = `🎁 선물이 왔어: ${label}! 선물함에서 입혀 봐.`;
+      }
+      renderGifts();
+      say(`${bubble.textContent} ${extra}`);
+    }
+
+    function wear(id) {
+      me.worn = me.worn === id ? null : id;          // 한 번 더 누르면 벗는다
+      store.set(KEY_ME, me);
+      handle.setMe(shown());
+      renderGifts();
+      say(me.worn ? `착용: ${Cat.ACC_LABEL[id]}!` : '원래 모습으로 돌아왔어.');
+    }
+
+    function renderGifts() {
+      giftTitle.textContent = `🎁 선물함 ${owned.size} / ${Cat.GIFT_IDS.length}`;
+      giftHint.textContent = owned.size
+        ? '눌러서 입혀 보세요. 입고 있는 걸 다시 누르면 벗어요.'
+        : '손님이 가끔 선물을 들고 와요. 머리 위의 🎁를 눌러 받아 보세요.';
+      giftGrid.replaceChildren(...Cat.GIFT_IDS.map((id) => {
+        const has = owned.has(id);
+        const c = el('canvas', { width: Render.N, height: Render.N });
+        const preview = Object.assign({}, me, { accessory: id });
+        Render.drawGrid(c.getContext('2d'), Render.framesOf(preview)[0], 1, 0, 0, false, has ? null : '#d9c8a8');
+        const worn = me.worn === id;
+        const node = el('div', {
+          className: 'slot' + (has ? ' got gift-slot' : '') + (worn ? ' worn' : ''),
+          title: has ? `${Cat.ACC_LABEL[id]}${worn ? ' (착용 중)' : ''}` : '???',
+        }, [c, el('span', { textContent: has ? Cat.ACC_LABEL[id] + (worn ? ' ✓' : '') : '?' })]);
+        if (has) node.onclick = () => wear(id);
+        return node;
+      }));
+    }
+
     const limitedTitle = el('h3', { className: 'book-title' });
     const limitedHint = el('p', { className: 'book-hint' });
     const limitedGrid = el('div', { className: 'book' });
@@ -312,6 +384,7 @@
       limitedGrid.replaceChildren(...ids.map((id) => slot(id, Cat.SEASON_NAME[Cat.catById(id).season])));
     }
     renderBook();
+    renderGifts();
 
     // 간식 바: 밥그릇에 간식을 놓으면 30분 동안 손님이 늘어난다
     const snackInfo = el('span', { className: 'snack-info' });
@@ -392,6 +465,7 @@
         store.set(KEY_MET, data.met);
         store.set(KEY_LOG, data.log);
         store.set(KEY_SNACK, data.snack);
+        store.set(KEY_GIFTS, data.gifts);
         location.reload();
       },
     });
@@ -419,7 +493,7 @@
           : '도감 고양이들이 인사하러 모였어! 영상으로 저장해서 자랑해 봐. (간식을 놓으면 냠냠 장면이 들어가요)');
 
       const stage = Showcase.mount(canvas, {
-        me,
+        me: shown(),
         cats: ids.map(Cat.catById),
         title: me.owner || me.name,
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
@@ -463,7 +537,7 @@
     }
 
     const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
-    const mine = el('button', { className: 'btn ghost', textContent: '내 고양이 보기', onclick: () => result(me) });
+    const mine = el('button', { className: 'btn ghost', textContent: '내 고양이 보기', onclick: () => result(shown(), me) });
     const again = el('button', {
       className: 'btn ghost', textContent: '다시 하기',
       onclick: () => { store.remove(KEY_ME); intro(); },
@@ -479,7 +553,8 @@
       },
     });
 
-    show(canvas, snackBar, brag, seasonRow, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
+    const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid]);
+    show(canvas, snackBar, brag, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
       el('div', { className: 'row' }, [mine, rename, again]));

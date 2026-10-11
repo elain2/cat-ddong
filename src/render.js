@@ -270,6 +270,62 @@
       for (let y = 21; y <= 25; y++) {
         for (let x = 19; x <= 22; x++) pset(g, x, y, (y % 3 === 0) ? B : A);
       }
+    } else if (acc === 'crown') {
+      const G = '#f6c945';
+      mr(8, 11, 15, G); mr(7, 11, 15, G);                       // 띠
+      [11, 15, 16, 20].forEach((x) => { pset(g, x, 6, G); pset(g, x, 5, G); });
+      pset(g, 15, 4, G); pset(g, 16, 4, G);
+      pset(g, 14, 7, RED); pset(g, 17, 7, '#4f7fd2');            // 보석
+    } else if (acc === 'partyhat') {
+      [[7, 13, 18], [6, 14, 17], [5, 14, 17], [4, 15, 16], [3, 15, 16]].forEach(([y, a, b]) => {
+        sp(y, a, b, (y % 2) ? '#fff0a8' : '#e04f5f');
+      });
+      sp(2, 14, 17, '#ffd84a');                                  // 방울
+    } else if (acc === 'flowers') {
+      const cols = ['#f06a9a', '#ffe45c', '#fffaf0', '#f7a6c0'];
+      for (let x = 8; x <= 23; x++) {
+        pset(g, x, 8, x % 2 ? '#5fa85a' : cols[(x >> 1) % cols.length]);
+        if (x % 4 === 0) pset(g, x, 7, cols[(x >> 2) % cols.length]);
+      }
+    } else if (acc === 'cape') {
+      // 몸 뒤로 펼쳐지는 망토. 이미 칠해진 칸은 건드리지 않는다.
+      const RC = '#c8414f', RD = '#a3303c';
+      for (let y = 19; y <= 28; y++) {
+        for (let x = edge - 3; x < edge; x++) {
+          const col = y > 25 ? RD : RC;
+          if (x >= 0 && g[y][x] === null) g[y][x] = col;
+          const mx = 31 - x;
+          if (mx < 32 && g[y][mx] === null) g[y][mx] = col;
+        }
+      }
+      sp(18, 13, 18, '#f6c945');                                 // 여밈
+    } else if (acc === 'headphones') {
+      sp(8, 6, 25, '#3a3a4a');
+      mr(9, 5, 5, '#3a3a4a');
+      mr(10, 4, 4, '#3a3a4a');
+      for (let y = 11; y <= 16; y++) { mr(y, 3, 4, RED); }
+      mr(12, 3, 3, '#f2808c');
+    } else if (acc === 'ribbonpin') {
+      const P = '#f06a9a', KN = '#c0407a';
+      [[7, 7], [8, 7], [10, 7], [11, 7], [7, 9], [8, 9], [10, 9], [11, 9]].forEach(([x, y]) => pset(g, x, y, P));
+      sp(8, 7, 11, P);
+      pset(g, 9, 8, KN);
+    } else if (acc === 'pearl' || acc === 'shell') {
+      // 목에 걸친 U자 줄. 가운데에 큰 알(진주) 또는 부채꼴 조개가 달린다.
+      const path = [[9, 18], [10, 19], [11, 20], [12, 21], [13, 21], [14, 22], [15, 22],
+        [16, 22], [17, 22], [18, 21], [19, 21], [20, 20], [21, 19], [22, 18]];
+      if (acc === 'pearl') {
+        path.forEach(([x, y], i) => pset(g, x, y, i % 2 ? '#8f7fb8' : '#cbbfe8'));
+        sp(23, 15, 16, '#8f7fb8'); sp(24, 15, 16, '#cbbfe8');          // 큰 진주
+        pset(g, 15, 23, '#ffffff'); pset(g, 14, 23, OUT); pset(g, 17, 23, OUT);
+        pset(g, 14, 24, OUT); pset(g, 17, 24, OUT); sp(25, 15, 16, OUT);
+      } else {
+        path.forEach(([x, y], i) => pset(g, x, y, i % 3 === 1 ? '#f7c6b5' : '#8a6a4a'));
+        sp(23, 14, 17, '#f7c6b5'); sp(24, 15, 16, '#f7c6b5');           // 부채꼴 조개
+        pset(g, 15, 23, '#e89a85'); pset(g, 16, 23, '#e89a85'); pset(g, 14, 22, '#f7c6b5');
+        sp(25, 15, 16, '#e89a85');
+        pset(g, 13, 23, OUT); pset(g, 18, 23, OUT); pset(g, 14, 24, OUT); pset(g, 17, 24, OUT);
+      }
     } else if (acc === 'bell') {
       mr(18, 11, 14, RED);
       sp(18, 15, 16, RED);

@@ -43,6 +43,14 @@
       glasses: '안경을 쓰고 있어요 → 책 한 권이면 충분해요.',
       bell: '방울을 달고 있어요 → 주전부리를 못 참아요.',
       none: '아무것도 안 걸쳤어요 → 몸만 가볍게 다녀요.',
+      crown: '왕관을 썼어요 → 사랑방의 주인은 바로 나예요.',
+      partyhat: '고깔모자를 썼어요 → 오늘은 누군가의 생일이에요.',
+      flowers: '꽃관을 썼어요 → 걸음마다 봄이 따라와요.',
+      cape: '망토를 둘렀어요 → 사랑방을 지키는 영웅이에요.',
+      headphones: '헤드폰을 썼어요 → 나만의 음악이 필요해요.',
+      ribbonpin: '리본핀을 꽂았어요 → 작은 멋도 놓치지 않아요.',
+      pearl: '진주 목걸이를 걸었어요 → 품위는 잃지 않아요.',
+      shell: '조개 목걸이를 걸었어요 → 마음은 늘 바닷가에 있어요.',
       blossom: '머리에 벚꽃을 꽂았어요 → 봄바람이 불면 가만있질 못해요.',
       shades: '선글라스를 썼어요 → 여름은 내 세상이에요.',
       leaf: '단풍잎을 얹었어요 → 가을 산책길이 제일 좋아요.',
@@ -54,7 +62,15 @@
   const ACC_LABEL = {
     bottle: '술병', tie: '넥타이', glasses: '안경', bell: '방울', none: '맨몸',
     blossom: '벚꽃', shades: '선글라스', leaf: '단풍잎', scarf: '목도리',
+    crown: '왕관', partyhat: '고깔모자', flowers: '꽃관', cape: '망토', headphones: '헤드폰', ribbonpin: '리본핀',
+    pearl: '진주 목걸이', shell: '조개 목걸이',
   };
+
+  // 선물: 손님이 가끔 가져오는 악세사리. 호스트(내 고양이)가 착용할 수 있다.
+  // 자기가 하고 있는 걸 건네고, 아무것도 안 한 고양이는 아래 특별 선물 중 하나를 준다.
+  const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell'];
+  const GIFT_IDS = ['tie', 'glasses', 'bell', 'bottle', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);
+  const GIFT_RATE = 0.3;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
 
   // 시즌 한정 손님: 그 계절에만 놀러 온다. id는 100번부터, 계절마다 3마리.
   const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
@@ -176,6 +192,15 @@
     return id >= LIMITED_BASE ? limitedCat(id - LIMITED_BASE) : poolCat(id);
   }
 
+  // slot(30분 단위)마다 손님이 선물을 들고 오는지. 없으면 null.
+  function giftOf(catId, slot) {
+    const r = rng(hashStr(`gift-${slot}-${catId}`));
+    if (r() > GIFT_RATE) return null;
+    const own = catById(catId).accessory;
+    if (own && own !== 'none' && GIFT_IDS.includes(own)) return own;
+    return EXTRA_GIFTS[Math.floor(r() * EXTRA_GIFTS.length)];
+  }
+
   function limitedIdsOf(season) {
     return LIMITED.map((c, i) => (c.season === season ? LIMITED_BASE + i : -1)).filter((i) => i >= 0);
   }
@@ -236,6 +261,7 @@
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
       fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
       owner: cleanOwner(o.owner),
+      worn: GIFT_IDS.includes(o.worn) ? o.worn : null,
     });
   }
 
@@ -251,7 +277,7 @@
   }
 
   root.Cat = {
-    buildCat, normalizeCat, cleanOwner, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, normalizeCat, cleanOwner, giftOf, GIFT_IDS, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };

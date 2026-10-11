@@ -313,6 +313,15 @@
         ctx.fillStyle = '#f0607a';
         ctx.fillRect(x - 2, y, 2, 2); ctx.fillRect(x + 2, y, 2, 2);
         ctx.fillRect(x - 3, y + 2, 8, 2); ctx.fillRect(x - 1, y + 4, 4, 2); ctx.fillRect(x, y + 6, 2, 1);
+      } else if (opts.giftOf && opts.giftOf(a.poolIndex)) {
+        // 선물을 들고 왔다: 누르면 받는다
+        const gy = y + 2;
+        ctx.fillStyle = OUT;
+        ctx.fillRect(x - 5, gy + 1, 11, 9); ctx.fillRect(x - 6, gy - 1, 13, 4);
+        ctx.fillStyle = '#e04f5f'; ctx.fillRect(x - 4, gy + 3, 9, 6);
+        ctx.fillStyle = '#f2808c'; ctx.fillRect(x - 5, gy, 11, 3);
+        ctx.fillStyle = '#ffd84a'; ctx.fillRect(x - 1, gy, 2, 9);
+        ctx.fillRect(x - 3, gy - 2, 2, 2); ctx.fillRect(x + 1, gy - 2, 2, 2);
       } else if (a.cat.limited && !opts.isCollected(a.poolIndex)) {
         // 시즌 한정 손님은 별이 반짝인다
         if (Math.floor(t / 300) % 4 !== 3) drawIcon(ctx, ICONS.star, x - 2, y - 1);
@@ -479,8 +488,18 @@
       actors = keep.concat(added);
     }
 
+    // 내 고양이의 모습을 바꾼다(선물 착용)
+    function setMe(cat) {
+      const a = actors.find((o) => o.isMe);
+      if (!a) return;
+      a.cat = cat;
+      a.frames = Render.framesOf(cat);
+      a.seq = Render.sequenceOf(cat);
+    }
+
     return {
       setVisitors,
+      setMe,
       setSeason(s) { season = s; },
       get season() { return season; },
       stop() {
