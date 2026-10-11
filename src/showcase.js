@@ -3,10 +3,11 @@
 (function (root) {
   const W = 540, H = 960;   // 9:16 세로 (스토리/릴스용)
   const S = 3;              // 스프라이트 배율: 32px → 96px
-  const DUR = 12;           // 영상 길이(초)
   const T_WALK = 1.6;       // 걸어 들어오기 시작
   const T_GREET = 6.4;      // 인사 시작
-  const T_END = 10.4;       // 마무리 카드
+  // 간식이 놓여 있으면 인사(3초) 뒤에 간식 먹는 장면(4.4초)이 들어간다.
+  const GREET_LEN = 3.0;
+  const EAT_LEN = 4.4;
 
   const THEME = {
     spring: { wall: '#fbe4e8', trim: '#e9b8c2', rug: '#f4a6b8', rug2: '#fbd3dc', fall: '#f7b6c8' },
@@ -16,9 +17,12 @@
   };
   const INK = '#2b2333';
   const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
+  const FISH = ['.XXXX.X', 'XXXXXXX', '.XXXX.X'];
+  const HEART_ROWS = HEART;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+  const easeInOut = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
 
   function pickMime() {
     if (!root.MediaRecorder) return null;
@@ -32,6 +36,12 @@
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     const T = THEME[opts.season] || THEME.autumn;
+    const snack = !!opts.snack;
+    const T_EAT = T_GREET + GREET_LEN;
+    const T_END = snack ? T_EAT + EAT_LEN : 10.4;
+    const DUR = Math.ceil(T_END + 1.6);
+    const GREET_END = snack ? T_EAT : T_END;
+    const BOWL = { x: W / 2, y: 770 };
 
     // ---- 배치: 앞줄 6마리(내 고양이는 가운데), 나머지는 뒷줄 ----
     const others = opts.cats.slice(0, 11);
@@ -57,9 +67,15 @@
     // 도착 순서: 내 고양이가 맨 앞, 나머지는 입력 순서
     const arrival = [opts.me].concat(others);
     actors.forEach((a) => { a.order = arrival.indexOf(a.cat); });
+    actors.forEach((a) => {
+      const th = Math.PI / 2 + (2 * Math.PI * a.order) / actors.length;   // 내 고양이가 맨 앞(아래)
+      a.eatX = BOWL.x + 190 * Math.cos(th);
+      a.eatY = BOWL.y + 95 * Math.sin(th);
+    });
 
     // ---- 그리기 ----
-    function heart(c, x, y, scale, color) {
+    function heart(c, x, y, scale, color, rows) {
+      const HEART = rows || HEART_ROWS;
       c.fillStyle = INK;
       HEART.forEach((row, j) => [...row].forEach((ch, i) => {
         if (ch === 'X') c.fillRect(x + (i - 1) * scale, y + j * scale, scale * 3, scale);
@@ -69,6 +85,20 @@
       HEART.forEach((row, j) => [...row].forEach((ch, i) => {
         if (ch === 'X') c.fillRect(x + i * scale, y + j * scale, scale, scale);
       }));
+    }
+
+    function bowl(c, cx, cy, fill) {
+      c.fillStyle = INK; c.fillRect(cx - 78, cy - 8, 156, 46);
+      c.fillStyle = '#e9e4dc'; c.fillRect(cx - 74, cy - 4, 148, 38);
+      c.fillStyle = '#c98d5a'; c.fillRect(cx - 74, cy - 4, 148, 10);
+      const h = Math.round(36 * fill);
+      c.fillStyle = INK; c.fillRect(cx - 64, cy - 14 - h, 128, h + 12);
+      c.fillStyle = '#b9733c'; c.fillRect(cx - 60, cy - 10 - h, 120, h + 8);
+      c.fillStyle = '#c98550'; c.fillRect(cx - 48, cy - 10 - h, 96, 8);
+      c.fillStyle = '#8a4b2a';
+      [[-40, 4], [-12, 12], [20, 2], [40, 14], [-26, 20], [8, 24]].forEach(([dx, dy]) => {
+        if (dy < h) c.fillRect(cx + dx, cy - 10 - h + dy, 8, 6);
+      });
     }
 
     function label(c, text, x, y, size, color, stroke) {
@@ -126,15 +156,40 @@
     function draw(c, t) {
       background(c, t);
 
-      // 인사 구간의 콩콩 + 하트
-      const greeting = t >= T_GREET && t < T_END;
-      actors.slice().sort((a, b) => a.y - b.y).forEach((a) => {
+      const greeting = t >= T_GREET && t < GREET_END;
+      const eatingPhase = snack && t >= T_EAT;
+
+      // 위치 계산: 걸어 들어오기 → (간식이 있으면) 밥그릇 둘레로 이동
+      const items = [];
+      actors.forEach((a) => {
         const start = T_WALK + a.order * 0.32;
-        const p = clamp((t - start) / 2.2, 0, 1);
         if (t < start) return;
+        const p = clamp((t - start) / 2.2, 0, 1);
         const startX = W + 80;
-        const x = startX + (a.homeX - startX) * easeOut(p);
-        const walking = p < 1;
+        let x = startX + (a.homeX - startX) * easeOut(p);
+        let y = a.y;
+        let walking = p < 1;
+        let flip = true;                                  // 왼쪽으로 걷는다
+        if (eatingPhase) {
+          const q = clamp((t - T_EAT - a.order * 0.08) / 1.2, 0, 1);
+          const k = easeInOut(q);
+          x = a.homeX + (a.eatX - a.homeX) * k;
+          y = a.y + (a.eatY - a.y) * k;
+          walking = q < 1;
+          flip = a.eatX < a.homeX;
+        }
+        items.push({ kind: 'cat', a, x, y, walking, flip });
+      });
+      if (eatingPhase || (snack && t >= T_EAT - 0.6)) items.push({ kind: 'bowl', y: BOWL.y });
+      items.sort((m, n) => m.y - n.y);
+
+      items.forEach((it) => {
+        if (it.kind === 'bowl') {
+          const prog = clamp((t - T_EAT) / EAT_LEN, 0, 1);
+          bowl(c, BOWL.x, BOWL.y, 1 - 0.65 * prog);
+          return;
+        }
+        const { a, x, y, walking, flip } = it;
         let frame;
         if (walking) {
           frame = a.frames[Math.floor(t / 0.18) % 2];
@@ -144,20 +199,22 @@
           frame = a.frames[0];
           for (const [f, d] of a.seq) { if (ms < d) { frame = a.frames[f]; break; } ms -= d; }
         }
-        let hop = 0;
-        if (greeting && !walking) {
+        let dy = 0;
+        if (greeting && !walking) {                       // 인사: 콩콩
           const phase = (t - T_GREET) * 6.5 - a.order * 0.55;
-          hop = Math.max(0, Math.sin(phase)) * 22;
+          dy = -Math.max(0, Math.sin(phase)) * 22;
+        }
+        if (eatingPhase && !walking) {                    // 냠냠: 고개를 끄덕끄덕
+          dy = Math.max(0, Math.sin(t * 9 + a.order * 1.3)) * 8;
         }
         const ox = Math.round(x - 16 * S);
-        const oy = Math.round(a.y - 31 * S - hop);
-        // 그림자
+        const oy = Math.round(y - 31 * S + dy);
         c.fillStyle = 'rgba(43,35,51,0.18)';
-        c.fillRect(Math.round(x - 30), Math.round(a.y - 2), 60, 8);
-        Render.drawGrid(c, frame, S, ox, oy, walking);
+        c.fillRect(Math.round(x - 30), Math.round(y - 2), 60, 8);
+        Render.drawGrid(c, frame, S, ox, oy, flip && walking);
 
         if (!walking) {
-          label(c, a.cat.name, Math.round(x), Math.round(a.y + 26), 18, INK);
+          label(c, a.cat.name, Math.round(x), Math.round(y + 26), 18, INK);
           if (a.isMe) heart(c, Math.round(x - 10), oy - 6, 3, '#f0607a');
           if (greeting) {
             const k = ((t - T_GREET) * 0.9 + a.order * 0.37) % 1;
@@ -165,6 +222,13 @@
               c.globalAlpha = 1 - k / 0.8;
               heart(c, Math.round(x - 8 + Math.sin(a.order * 3 + k * 6) * 10), oy - 4 - Math.round(k * 50), 2, '#f0607a');
               c.globalAlpha = 1;
+            }
+          }
+          if (eatingPhase) {
+            if (Math.floor(t * 3 + a.order) % 2 === 0) {
+              heart(c, Math.round(x - 10), oy - 14, 3, '#6fb7e8', FISH);
+            } else {
+              label(c, '냠냠', Math.round(x), oy - 4, 20, '#b8662a');
             }
           }
         }
@@ -249,13 +313,14 @@
       c.width = W; c.height = H;
       const cx = c.getContext('2d');
       cx.imageSmoothingEnabled = false;
-      draw(cx, 9.2);
+      draw(cx, snack ? T_EAT + 2.2 : 9.2);
       c.toBlob(cb, 'image/png');
     }
 
     return {
       replay, record, snapshot,
       duration: DUR,
+      hasSnack: snack,
       stop() {
         cancelAnimationFrame(raf);
         if (recorder && recorder.state === 'recording') { try { recorder.stop(); } catch (e) { /* 무시 */ } }
@@ -263,5 +328,5 @@
     };
   }
 
-  root.Showcase = { mount, DUR };
+  root.Showcase = { mount };
 })(typeof window !== 'undefined' ? window : globalThis);

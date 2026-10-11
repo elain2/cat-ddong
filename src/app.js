@@ -406,9 +406,11 @@
       const n = countMet();
       const canvas = el('canvas', { className: 'stage' });
       const note = el('p', { className: 'stage-note' });
-      say(ids.length
-        ? '도감 고양이들이 인사하러 모였어! 영상으로 저장해서 자랑해 봐.'
-        : '아직 도감이 비어 있어. 사랑방에서 손님을 먼저 만나 보자!');
+      say(!ids.length
+        ? '아직 도감이 비어 있어. 사랑방에서 손님을 먼저 만나 보자!'
+        : snackOn()
+          ? '간식 먹는 장면도 같이 들어가! 영상으로 저장해서 자랑해 봐.'
+          : '도감 고양이들이 인사하러 모였어! 영상으로 저장해서 자랑해 봐. (간식을 놓으면 냠냠 장면이 들어가요)');
 
       const stage = Showcase.mount(canvas, {
         me,
@@ -416,6 +418,7 @@
         title: me.name,
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
         season: nowSeason,
+        snack: snackOn(),              // 간식이 놓여 있으면 간식 먹는 장면이 들어간다
         url: 'elain2.github.io/cat-ddong',
       });
 
@@ -428,7 +431,7 @@
       recBtn.textContent = '🎬 영상으로 저장';
       recBtn.onclick = () => {
         recBtn.disabled = true;
-        note.textContent = `녹화 중이에요… (${Showcase.DUR}초) 이 탭을 켜 둔 채로 기다려 주세요.`;
+        note.textContent = `녹화 중이에요… (${stage.duration}초) 이 탭을 켜 둔 채로 기다려 주세요.`;
         stage.record(
           (blob, ext) => {
             download(blob, `${me.name}-고양이사랑방.${ext}`);
