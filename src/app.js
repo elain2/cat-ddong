@@ -65,7 +65,7 @@
   }
 
   function nickname() {
-    say('마지막이야. 이름이나 별명을 알려줘. 비워둬도 돼.');
+    say('마지막이야. 네 이름이나 별명을 알려줘. 고양이 옆에 붙여 줄게. 비워둬도 돼.');
     const input = el('input', { type: 'text', maxLength: 12, placeholder: '이름 / 별명 (선택)', className: 'input' });
     const go = () => summon(input.value);
     input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); });
@@ -84,7 +84,7 @@
   }
 
   function result(cat) {
-    say('새 친구가 왔어냥!');
+    say(cat.owner ? `${cat.owner}, 새 친구가 왔어냥!` : '새 친구가 왔어냥!');
     const canvas = el('canvas', { width: Render.N, height: Render.N, className: 'cat' });
 
     const tags = el('div', { className: 'tags' }, [
@@ -109,6 +109,7 @@
       canvas,
       el('h2', { textContent: cat.name }),
       el('p', { className: 'title', textContent: cat.title }),
+      el('p', { className: 'owner', textContent: cat.owner ? `${cat.owner}의 고양이` : '' }),
       tags,
       reasons,
     ]);
@@ -238,7 +239,7 @@
       },
       onPick(actor) {
         if (actor.isMe) {
-          say(`내 고양이 ${me.name}! ${me.title}`);
+          say(`${me.owner ? me.owner + '의 ' : '내 '}고양이 ${me.name}! ${me.title}`);
           return;
         }
         const c = actor.cat;
@@ -357,8 +358,8 @@
 
     renderSnack();
     say(gotDaily
-      ? '사랑방에 온 걸 환영해냥! 오늘의 간식 3개를 줬어. 밥그릇에 놓아봐.'
-      : '사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.');
+      ? `${me.owner ? me.owner + ', ' : ''}사랑방에 온 걸 환영해냥! 오늘의 간식 3개를 줬어. 밥그릇에 놓아봐.`
+      : `${me.owner ? me.owner + ', ' : ''}사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.`);
     // 1초마다: 남은 시간 갱신 + 손님 교체/간식 종료 반영
     const timer = setInterval(() => { syncVisitors(); renderSnack(); }, 1000);
 
@@ -415,7 +416,7 @@
       const stage = Showcase.mount(canvas, {
         me,
         cats: ids.map(Cat.catById),
-        title: me.name,
+        title: me.owner || me.name,
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
         season: nowSeason,
         snack: snackOn(),              // 간식이 놓여 있으면 간식 먹는 장면이 들어간다
@@ -462,11 +463,21 @@
       className: 'btn ghost', textContent: '다시 하기',
       onclick: () => { store.remove(KEY_ME); intro(); },
     });
+    const rename = el('button', {
+      className: 'btn ghost', textContent: '내 이름 바꾸기',
+      onclick: () => {
+        const v = prompt('이름이나 별명을 알려줘 (12자까지)', me.owner || '');
+        if (v === null) return;                       // 취소
+        me.owner = Cat.cleanOwner(v);
+        store.set(KEY_ME, me);
+        say(me.owner ? `${me.owner}, 이름을 기억해 둘게!` : '이름을 지웠어.');
+      },
+    });
 
     show(canvas, snackBar, brag, seasonRow, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
-      el('div', { className: 'row' }, [mine, again]));
+      el('div', { className: 'row' }, [mine, rename, again]));
     cleanup = () => { handle.stop(); clearInterval(timer); };
   }
 

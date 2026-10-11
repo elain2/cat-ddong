@@ -120,7 +120,13 @@
       accessory,
     };
     cat.seed = hashStr(JSON.stringify([cat, (nickname || '').trim()]));
+    cat.owner = cleanOwner(nickname);   // 시드 계산 뒤에 붙인다 (생김새에 영향 없음)
     return finish(cat);
+  }
+
+  // 사용자가 넣은 이름: 공백 정리, 제어문자 제거, 12자까지
+  function cleanOwner(v) {
+    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 12);
   }
 
   function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
@@ -229,6 +235,7 @@
     return finish({
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
       fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
+      owner: cleanOwner(o.owner),
     });
   }
 
@@ -244,7 +251,7 @@
   }
 
   root.Cat = {
-    buildCat, normalizeCat, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, normalizeCat, cleanOwner, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
