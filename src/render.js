@@ -149,6 +149,9 @@
     const sway = f === 1 ? 1 : 0;
     const tx = 31 - edge + 2;                     // 꼬리 x
 
+    // 호스트 표식 색: 털색과 대비되는 색 (이마 무늬, 꼬리 끝에 쓴다)
+    const MC = cat.mark ? ({ cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a' }[cat.fur] || '#f06a9a') : null;
+
     // 꼬리: 활발은 길게 쭉, 보통은 끝이 말림, 느긋은 짧게
     if (e === 2 && !cat.chubby) {
       for (let y = 14; y <= 28; y++) sp(y, tx, tx + 1, K);
@@ -162,6 +165,11 @@
       sp(23, tx - 1 + sway, tx + sway, K);
     }
     sp(29, 31 - edge + 1, tx + 1, K);
+    if (MC) {                                       // 호스트: 꼬리 끝을 물들인다
+      if (e === 2 && !cat.chubby) { sp(9, tx + sway, tx + 1 + sway, MC); sp(10, tx + sway, tx + 1 + sway, MC); }
+      else if (e === 1 || cat.chubby) { sp(18, tx - 1 + sway, tx - 1 + sway, MC); sp(19, tx - 1 + sway, tx + sway, MC); }
+      else { sp(23, tx - 1 + sway, tx + sway, MC); }
+    }
 
     // 몸통
     mr(18, edge + 3, 15, K);
@@ -176,6 +184,7 @@
     for (let y = 26; y <= 28; y++) mr(y, 10, 14, WHITE);
     mr(29, 9, 14, WHITE);
     for (let y = 26; y <= 29; y++) sp(y, 15, 16, null);
+    if (cat.sock) { mr(28, 10, 14, cat.sock); mr(29, 9, 14, cat.sock); }   // 호스트: 색깔 양말
 
     // 귀: 사교적이면 쫑긋, 독립적이면 옆으로 눕는다
     if (s === 0) {
@@ -232,7 +241,6 @@
 
     // 호스트 전용 이마 무늬 (털색과 대비되는 색)
     if (cat.mark) {
-      const MC = { cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a' }[cat.fur] || '#f06a9a';
       const shapes = {
         star: [[15, 9], [16, 9], [14, 10], [15, 10], [16, 10], [17, 10], [15, 11], [16, 11]],
         heart: [[14, 10], [15, 10], [16, 10], [17, 10], [14, 11], [15, 11], [16, 11], [17, 11], [15, 12], [16, 12]],
@@ -501,7 +509,7 @@
   function framesOf(cat) {
     const key = JSON.stringify([cat.energy, cat.social, cat.delicacy, cat.boldness, cat.fur,
       cat.accessory, (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style,
-      cat.mark || '', cat.eyeColor || '']);
+      cat.mark || '', cat.eyeColor || '', cat.sock || '']);
     if (!frameCache.has(key)) frameCache.set(key, [0, 1, 2].map((f) => buildFrame(cat, f)));
     return frameCache.get(key);
   }

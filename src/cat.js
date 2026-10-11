@@ -204,6 +204,7 @@
   const MARKS = ['star', 'heart', 'bolt', 'tabby'];
   const MARK_LABEL = { star: '별', heart: '하트', bolt: '번개', tabby: 'M자' };
   const EYE_COLORS = ['#c8892a', '#3f9a5a', '#4f7fd2', '#8a5ac8'];
+  const SOCKS = ['#f7c6d8', '#c8ecd8', '#d8ccf5', '#fff0a8'];   // 분홍, 민트, 연보라, 버터
   const EYE_LABEL = { '#c8892a': '호박색', '#3f9a5a': '초록색', '#4f7fd2': '파란색', '#8a5ac8': '보라색' };
 
   function withSignature(cat) {
@@ -213,6 +214,7 @@
     const eyeColor = EYE_COLORS[Math.floor(r() * EYE_COLORS.length)];
     cat.mark = mark;
     cat.eyeColor = eyeColor;
+    cat.sock = SOCKS[Math.floor(r() * SOCKS.length)];   // 앞발 양말 색 (꼬리 끝은 이마 무늬와 같은 색)
     return cat;
   }
 
@@ -357,7 +359,7 @@
       REASONS.delicacy[cat.delicacy],
       REASONS.boldness[cat.boldness],
       REASONS.fur[cat.fur],
-    ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
+    ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈, 꼬리 끝과 양말 색 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
     .concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
       .map((a) => REASONS.accessory[a]).filter(Boolean));
   }
