@@ -38,6 +38,22 @@
   // 좌우 대칭: x' = 31 - x
   function hmirror(g, y, x0, x1, c) { hspan(g, y, x0, x1, c); hspan(g, y, 31 - x1, 31 - x0, c); }
 
+  // 이미 색이 칠해진 위에 올리는 소품: 외곽선과 함께 찍는다.
+  function stampCells(g, cells, fill) {
+    const has = new Set(cells.map(([x, y]) => x + ',' + y));
+    cells.forEach(([x, y]) => {
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        if (!has.has((x + dx) + ',' + (y + dy))) pset(g, x + dx, y + dy, OUT);
+      });
+    });
+    cells.forEach(([x, y]) => pset(g, x, y, typeof fill === 'function' ? fill(x, y) : fill));
+  }
+  function rowsToCells(rows) {
+    const out = [];
+    rows.forEach(([y, x0, x1]) => { for (let x = x0; x <= x1; x++) out.push([x, y]); });
+    return out;
+  }
+
   function addOutline(g) {
     const out = g.map((row) => row.slice());
     for (let y = 0; y < N; y++) {
@@ -219,8 +235,24 @@
     }
 
     // 액세서리: 등(망토) → 목 → 머리 → 얼굴 → 손 순서로 겹쳐 그린다
-    const ORDER = { cape: 0, pearl: 1, shell: 1, scarf: 1, bell: 1, tie: 2, blossom: 2, leaf: 2, crown: 2,
-      partyhat: 2, flowers: 2, ribbonpin: 2, headphones: 2, glasses: 3, shades: 3, bottle: 4 };
+    const ORDER = { cape: 0, wings: 0, butterfly: 0, backpack: 0,
+      pearl: 1, shell: 1, scarf: 1, bell: 1, bandana: 1, medal: 1, lei: 1,
+      tie: 2, blossom: 2, leaf: 2, crown: 2, partyhat: 2, flowers: 2, ribbonpin: 2, headphones: 2,
+      beret: 2, strawhat: 2, santahat: 2,
+      glasses: 3, shades: 3, monocle: 3, heartglasses: 3, sleepmask: 3,
+      bottle: 4, fish: 4, balloon: 4, icecream: 4 };
+    // 날개: 몸 옆으로 펼쳐진다(이미 칠해진 칸은 건드리지 않음)
+    const wingsOf = (c1, c2, rows) => {
+      rows.forEach(([y, w]) => {
+        for (let k = 1; k <= w; k++) {
+          const x = edge - k;
+          const col = k === w ? c2 : c1;
+          if (x >= 0 && g[y][x] === null) g[y][x] = col;
+          const mx = 31 - x;
+          if (mx < 32 && g[y][mx] === null) g[y][mx] = col;
+        }
+      });
+    };
     const drawAcc = (acc) => {
     if (acc === 'tie') {
       // 회식 끝난 아저씨처럼 넥타이를 머리에 감았다: 줄무늬 띠 + 왼쪽 매듭 + 늘어진 끝자락
@@ -329,6 +361,95 @@
         sp(25, 15, 16, '#e89a85');
         pset(g, 13, 23, OUT); pset(g, 18, 23, OUT); pset(g, 14, 24, OUT); pset(g, 17, 24, OUT);
       }
+    } else if (acc === 'beret') {
+      const B = '#3f4f8f';
+      [[8, 8, 22], [7, 9, 23], [6, 11, 21], [5, 15, 18]].forEach(([y, a, b]) => sp(y, a, b, B));
+      pset(g, 17, 4, B);
+      sp(6, 12, 14, '#5a6fb5');
+    } else if (acc === 'strawhat') {
+      [[3, 12, 19], [4, 11, 20], [5, 11, 20]].forEach(([y, a, b]) => sp(y, a, b, '#e8c86a'));
+      sp(6, 11, 20, RED);
+      sp(7, 5, 26, '#d4a94a');
+      sp(8, 6, 25, '#b88a35');
+    } else if (acc === 'santahat') {
+      const S = '#d83a4a';
+      [[7, 10, 21], [6, 11, 21], [5, 13, 22], [4, 15, 23], [3, 18, 24]].forEach(([y, a, b]) => sp(y, a, b, S));
+      sp(8, 7, 24, '#fffaf0');                               // 하얀 털단
+      for (let y = 2; y <= 4; y++) sp(y, 24, 26, '#fffaf0');  // 방울
+    } else if (acc === 'monocle') {
+      const GD = '#d4a94a';
+      const rx = 31 - 11 - 1;
+      for (let x = rx; x <= rx + ew + 1; x++) { pset(g, x, 10, GD); pset(g, x, 14, GD); }
+      for (let y = 10; y <= 14; y++) { pset(g, rx, y, GD); pset(g, rx + ew + 1, y, GD); }
+      [[rx + ew + 1, 15], [rx + ew + 2, 16], [rx + ew + 2, 17], [rx + ew + 3, 18]].forEach(([x, y]) => pset(g, x, y, GD));
+    } else if (acc === 'heartglasses') {
+      const H = '#f06a9a';
+      const heart = (x0) => {
+        [[1, 9], [2, 9], [4, 9], [5, 9], [0, 10], [3, 10], [6, 10], [0, 11], [6, 11],
+          [1, 12], [5, 12], [2, 13], [4, 13], [3, 14]].forEach(([dx, y]) => pset(g, x0 + dx, y, H));
+      };
+      heart(7); heart(18);
+      sp(10, 14, 17, H);
+    } else if (acc === 'sleepmask') {
+      const M = '#f2a6c0';
+      sp(9, 8, 23, M); sp(10, 8, 23, M);
+      mr(9, 5, 7, '#c0407a');                                // 끈
+      [11, 12, 13].forEach((x) => { pset(g, x, 9, '#6b3a5a'); pset(g, 31 - x, 9, '#6b3a5a'); });
+      pset(g, 12, 10, '#6b3a5a'); pset(g, 19, 10, '#6b3a5a');
+    } else if (acc === 'bandana') {
+      const RB = '#d2554f';
+      [[18, 9, 22], [19, 10, 21], [20, 11, 20], [21, 12, 19], [22, 13, 18], [23, 14, 17], [24, 15, 16]]
+        .forEach(([y, a, b]) => sp(y, a, b, RB));
+      sp(18, 9, 22, '#a3303c');
+      [[12, 19], [15, 20], [18, 19], [14, 22], [17, 21]].forEach(([x, y]) => pset(g, x, y, '#fffaf0'));
+    } else if (acc === 'medal') {
+      [[11, 18], [12, 19], [13, 20], [14, 21]].forEach(([x, y]) => { pset(g, x, y, '#4f7fd2'); pset(g, 31 - x, y, '#e04f5f'); });
+      stampCells(g, rowsToCells([[22, 14, 17], [23, 14, 17], [24, 14, 17]]), (x, y) => (y === 22 ? '#fff0a8' : '#f6c945'));
+      pset(g, 15, 23, '#d4a94a'); pset(g, 16, 23, '#d4a94a');
+    } else if (acc === 'lei') {
+      const path = [[9, 18], [10, 19], [11, 20], [12, 21], [13, 21], [14, 22], [15, 22],
+        [16, 22], [17, 22], [18, 21], [19, 21], [20, 20], [21, 19], [22, 18]];
+      const colors = ['#f06a9a', '#ffd84a', '#f2a64e', '#5fa85a'];
+      path.forEach(([x, y], i) => {
+        pset(g, x, y, colors[i % 4]);
+        if (i % 2 === 0) pset(g, x, y + 1, colors[(i + 1) % 4]);
+      });
+    } else if (acc === 'wings') {
+      wingsOf('#ffffff', '#cfd9ee', [[15, 2], [16, 3], [17, 4], [18, 5], [19, 5], [20, 5], [21, 4], [22, 4], [23, 3], [24, 2]]);
+    } else if (acc === 'butterfly') {
+      wingsOf('#f5a6d8', '#b58be6', [[16, 3], [17, 4], [18, 5], [19, 5], [20, 5], [21, 4], [22, 3], [23, 4], [24, 4], [25, 3], [26, 2]]);
+    } else if (acc === 'backpack') {
+      const GB = '#4fa86b', GD = '#2f7a4a';
+      for (let y = 20; y <= 27; y++) {
+        [edge - 2, edge - 1].forEach((x) => {
+          const c = (x === edge - 2 || y === 27) ? GD : GB;
+          if (x >= 0 && g[y][x] === null) g[y][x] = c;
+          const mx = 31 - x;
+          if (mx < 32 && g[y][mx] === null) g[y][mx] = c;
+        });
+      }
+      for (let y = 18; y <= 23; y++) mr(y, 12, 12, GD);       // 어깨끈
+      pset(g, 12, 22, '#f6c945'); pset(g, 19, 22, '#f6c945');
+    } else if (acc === 'fish') {
+      const cells = rowsToCells([[22, 13, 18], [23, 12, 19], [24, 12, 19], [25, 13, 18]])
+        .concat([[10, 22], [11, 23], [11, 24], [10, 25]]);
+      stampCells(g, cells, (x, y) => (y >= 24 ? '#bfe3f7' : '#6fb7e8'));
+      pset(g, 17, 23, OUT);
+      sp(23, 14, 14, '#4f93c8');
+    } else if (acc === 'balloon') {
+      const cells = [];
+      for (let y = 5; y <= 13; y++) for (let x = 20; x <= 28; x++) {
+        if ((x - 24) * (x - 24) + (y - 9) * (y - 9) <= 14) cells.push([x, y]);
+      }
+      stampCells(g, cells, (x, y) => (x <= 22 && y <= 8 ? '#f2808c' : RED));
+      [[24, 15], [23, 16], [23, 17], [22, 18], [22, 19], [21, 20], [21, 21]].forEach(([x, y]) => pset(g, x, y, '#6a6a7a'));
+      stampCells(g, rowsToCells([[22, 19, 22], [23, 19, 22]]), WHITE);   // 풍선 끈을 쥔 앞발
+    } else if (acc === 'icecream') {
+      stampCells(g, rowsToCells([[22, 19, 23], [23, 19, 23], [24, 20, 22], [25, 20, 22], [26, 21, 21], [27, 21, 21]]),
+        (x, y) => ((x + y) % 2 ? '#d9a85a' : '#c48f3f'));
+      stampCells(g, rowsToCells([[19, 19, 23], [20, 19, 23], [21, 19, 23]]), '#f7a8b8');
+      stampCells(g, rowsToCells([[17, 20, 22], [18, 19, 23]]), '#8ad4a0');
+      stampCells(g, rowsToCells([[24, 17, 18], [25, 17, 18]]), WHITE);    // 쥔 앞발
     } else if (acc === 'bell') {
       mr(18, 11, 14, RED);
       sp(18, 15, 16, RED);

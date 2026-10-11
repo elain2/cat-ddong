@@ -49,6 +49,21 @@
       cape: '망토를 둘렀어요 → 사랑방을 지키는 영웅이에요.',
       headphones: '헤드폰을 썼어요 → 나만의 음악이 필요해요.',
       ribbonpin: '리본핀을 꽂았어요 → 작은 멋도 놓치지 않아요.',
+      beret: '베레모를 썼어요 → 오늘은 예술가가 되기로 했어요.',
+      strawhat: '밀짚모자를 썼어요 → 소풍 갈 준비가 끝났어요.',
+      santahat: '산타모자를 썼어요 → 누군가에게 선물을 주러 가요.',
+      monocle: '외눈안경을 꼈어요 → 세상을 한 눈으로 꿰뚫어 봐요.',
+      heartglasses: '하트 안경을 꼈어요 → 세상이 온통 분홍빛이에요.',
+      sleepmask: '수면안대를 이마에 올렸어요 → 낮잠 준비는 언제나 완료예요.',
+      bandana: '반다나를 둘렀어요 → 카우보이처럼 터프해요.',
+      medal: '메달을 걸었어요 → 오늘 하루도 잘 해냈어요.',
+      lei: '꽃목걸이를 걸었어요 → 마음은 이미 휴양지예요.',
+      wings: '천사 날개를 달았어요 → 날 수 있을 것 같은 기분이에요.',
+      butterfly: '나비 날개를 달았어요 → 살랑살랑 가볍게 다녀요.',
+      backpack: '배낭을 멨어요 → 소풍도 모험도 준비 완료예요.',
+      fish: '생선을 들었어요 → 이건 절대 안 나눠 줄 거예요.',
+      balloon: '풍선을 들었어요 → 바람이 불어도 놓치지 않아요.',
+      icecream: '아이스크림을 들었어요 → 녹기 전에 먹어야 해요.',
       pearl: '진주 목걸이를 걸었어요 → 품위는 잃지 않아요.',
       shell: '조개 목걸이를 걸었어요 → 마음은 늘 바닷가에 있어요.',
       blossom: '머리에 벚꽃을 꽂았어요 → 봄바람이 불면 가만있질 못해요.',
@@ -64,22 +79,29 @@
     blossom: '벚꽃', shades: '선글라스', leaf: '단풍잎', scarf: '목도리',
     crown: '왕관', partyhat: '고깔모자', flowers: '꽃관', cape: '망토', headphones: '헤드폰', ribbonpin: '리본핀',
     pearl: '진주 목걸이', shell: '조개 목걸이',
+    beret: '베레모', strawhat: '밀짚모자', santahat: '산타모자',
+    monocle: '외눈안경', heartglasses: '하트 안경', sleepmask: '수면안대',
+    bandana: '반다나', medal: '메달', lei: '꽃목걸이',
+    wings: '천사 날개', butterfly: '나비 날개', backpack: '배낭',
+    fish: '생선', balloon: '풍선', icecream: '아이스크림',
   };
 
   // 선물: 손님이 가끔 가져오는 악세사리. 호스트(내 고양이)가 착용할 수 있다.
   // 자기가 하고 있는 걸 건네고, 아무것도 안 한 고양이는 아래 특별 선물 중 하나를 준다.
-  const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell'];
+  const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell',
+    'beret', 'strawhat', 'santahat', 'monocle', 'heartglasses', 'sleepmask',
+    'bandana', 'medal', 'lei', 'wings', 'butterfly', 'backpack', 'fish', 'balloon', 'icecream'];
   const GIFT_IDS = ['tie', 'glasses', 'bell', 'bottle', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);
   // 착용 자리(슬롯): 슬롯마다 하나씩, 서로 다른 슬롯은 같이 착용할 수 있다.
   const SLOTS = ['head', 'face', 'neck', 'back', 'hold'];
   const SLOT_LABEL = { head: '머리', face: '얼굴', neck: '목', back: '등', hold: '손' };
   const SLOT_OF = {
     tie: 'head', blossom: 'head', leaf: 'head', crown: 'head', partyhat: 'head', flowers: 'head',
-    ribbonpin: 'head', headphones: 'head',
-    glasses: 'face', shades: 'face',
-    bell: 'neck', scarf: 'neck', pearl: 'neck', shell: 'neck',
-    cape: 'back',
-    bottle: 'hold',
+    ribbonpin: 'head', headphones: 'head', beret: 'head', strawhat: 'head', santahat: 'head',
+    glasses: 'face', shades: 'face', monocle: 'face', heartglasses: 'face', sleepmask: 'face',
+    bell: 'neck', scarf: 'neck', pearl: 'neck', shell: 'neck', bandana: 'neck', medal: 'neck', lei: 'neck',
+    cape: 'back', wings: 'back', butterfly: 'back', backpack: 'back',
+    bottle: 'hold', fish: 'hold', balloon: 'hold', icecream: 'hold',
   };
 
   // 저장된 worn(예전엔 문자열 하나)을 {슬롯: id}로 정리한다.
