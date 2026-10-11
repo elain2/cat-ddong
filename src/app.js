@@ -10,6 +10,9 @@
 
   const KEY_ME = 'cat-ddong.me';
   const KEY_MET = 'cat-ddong.met';
+  const KEY_SNACK = 'cat-ddong.snack';
+  const SNACK_MS = 30 * 60 * 1000;   // 간식 효과 시간 (손님 교체 주기와 같다)
+  const SNACK_MAX = 10;
   const store = {
     get(key, fallback) {
       try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; }
@@ -111,11 +114,24 @@
 
   function room(me) {
     const met = new Set(store.get(KEY_MET, []));
-    say('사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.');
-
     const canvas = el('canvas', { className: 'room' });
     const nowSeason = Cat.seasonOf(new Date());
-    const visitors = Cat.visitorsFor(Date.now(), 4, nowSeason);
+
+    // 간식: 하루 첫 접속에 3개, 새 고양이를 만날 때마다 1개
+    const snack = Object.assign({ count: 0, daily: '', until: 0 }, store.get(KEY_SNACK, {}));
+    const dayKey = (() => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; })();
+    let gotDaily = false;
+    if (snack.daily !== dayKey) {
+      snack.daily = dayKey;
+      snack.count = Math.min(SNACK_MAX, snack.count + 3);
+      gotDaily = true;
+    }
+    const saveSnack = () => store.set(KEY_SNACK, snack);
+    saveSnack();
+    const snackOn = () => Date.now() < snack.until;
+    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, nowSeason, snackOn());
+    const visitors = visitorIds();
+    let visitorKey = visitors.join(',');
     const countMet = () => {
       const ids = [...met];
       return {
@@ -126,6 +142,7 @@
     const handle = Room.mount(canvas, {
       me,
       visitors,
+      snackOn,
       isCollected: (k) => met.has(k),
       onReact(kind, a, b) {
         const x = a.cat.name, y = b.cat.name;
@@ -135,6 +152,7 @@
           note: `${x}, ${y} 둘 다 신났어!`,
           zzz: `${x}: 꾸벅꾸벅…`,
           dots: `${x} → ${y}: 가만히 쳐다봐…`,
+          eat: `${x}: 냠냠, 간식 맛있다!`,
         };
         say(lines[kind]);
       },
@@ -149,11 +167,14 @@
         } else {
           met.add(actor.poolIndex);
           store.set(KEY_MET, [...met]);
+          snack.count = Math.min(SNACK_MAX, snack.count + 1);   // 새 친구를 만나면 간식 +1
+          saveSnack();
           const n = countMet();
           say(c.limited
-            ? `✨ ${Cat.SEASON_NAME[c.season]} 한정 손님 ${c.name}(${c.title})! 한정 도감 ${n.limited}/${Cat.LIMITED_COUNT}`
-            : `${c.name}(${c.title})를 처음 만났어! 도감 ${n.normal}/${Cat.POOL_SIZE}`);
+            ? `✨ ${Cat.SEASON_NAME[c.season]} 한정 손님 ${c.name}(${c.title})! 한정 도감 ${n.limited}/${Cat.LIMITED_COUNT} (간식 +1)`
+            : `${c.name}(${c.title})를 처음 만났어! 도감 ${n.normal}/${Cat.POOL_SIZE} (간식 +1)`);
           renderBook();
+          renderSnack();
         }
       },
     });
@@ -198,16 +219,58 @@
     }
     renderBook();
 
+    // 간식 바: 밥그릇에 간식을 놓으면 30분 동안 손님이 늘어난다
+    const snackInfo = el('span', { className: 'snack-info' });
+    const snackBtn = el('button', { className: 'btn snack-btn', onclick: useSnack });
+    const snackBar = el('div', { className: 'snack' }, [snackInfo, snackBtn]);
+
+    function renderSnack() {
+      const left = snack.until - Date.now();
+      if (left > 0) {
+        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+        snackInfo.textContent = `🐟 간식이 놓여 있어요 · ${m}:${String(s).padStart(2, '0')}`;
+        snackBtn.textContent = '간식 먹는 중';
+        snackBtn.disabled = true;
+      } else {
+        snackInfo.textContent = `🐟 간식 ${snack.count}개`;
+        snackBtn.textContent = '간식 놓기';
+        snackBtn.disabled = snack.count <= 0;
+      }
+    }
+
+    function syncVisitors() {
+      const ids = visitorIds();
+      const key = ids.join(',');
+      if (key !== visitorKey) { visitorKey = key; handle.setVisitors(ids); }
+    }
+
+    function useSnack() {
+      if (snackOn() || snack.count <= 0) return;
+      snack.count -= 1;
+      snack.until = Date.now() + SNACK_MS;
+      saveSnack();
+      syncVisitors();
+      renderSnack();
+      say('밥그릇에 간식을 놓았어! 손님이 더 올 거야. (한정 손님 확률도 올라가요)');
+    }
+
+    renderSnack();
+    say(gotDaily
+      ? '사랑방에 온 걸 환영해냥! 오늘의 간식 3개를 줬어. 밥그릇에 놓아봐.'
+      : '사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.');
+    // 1초마다: 남은 시간 갱신 + 손님 교체/간식 종료 반영
+    const timer = setInterval(() => { syncVisitors(); renderSnack(); }, 1000);
+
     const mine = el('button', { className: 'btn ghost', textContent: '내 고양이 보기', onclick: () => result(me) });
     const again = el('button', {
       className: 'btn ghost', textContent: '다시 하기',
       onclick: () => { store.remove(KEY_ME); intro(); },
     });
 
-    show(canvas, seasonRow, el('div', { className: 'card' }, [bookTitle, grid]),
+    show(canvas, snackBar, seasonRow, el('div', { className: 'card' }, [bookTitle, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       el('div', { className: 'row' }, [mine, again]));
-    cleanup = () => handle.stop();
+    cleanup = () => { handle.stop(); clearInterval(timer); };
   }
 
   const saved = store.get(KEY_ME, null);

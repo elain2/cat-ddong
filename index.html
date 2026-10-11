@@ -98,6 +98,13 @@
       width: 100%; aspect-ratio: 240 / 176; display: block; cursor: pointer;
       border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
     }
+    .snack {
+      display: flex; gap: 10px; align-items: center; justify-content: space-between;
+      background: var(--card); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+      padding: 6px 8px 6px 12px; font-size: 14px;
+    }
+    .snack-btn { font-size: 14px; padding: 4px 12px; box-shadow: 2px 2px 0 var(--ink); }
+    .snack-btn:disabled { background: #e8dcc6; cursor: default; transform: none; }
     .seasons { display: flex; gap: 8px; justify-content: center; }
     .chip {
       font: inherit; font-size: 13px; cursor: pointer; color: var(--ink);

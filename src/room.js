@@ -124,6 +124,7 @@
     note: { rows: ['..XXX', '..X.X', '..X..', 'XXX..', 'XXX..'], color: '#6b5b95' },
     dots: { rows: ['XX.XX.XX', 'XX.XX.XX'], color: '#2b2333' },
     zzz: { rows: ['XXX', '..X', '.X.', 'XXX'], color: '#6b5b95' },
+    eat: { rows: ['.XXXX.X', 'XXXXXXX', '.XXXX.X'], color: '#6fb7e8' },
     star: { rows: ['..X..', '..X..', 'XXXXX', '.XXX.', '.X.X.'], color: '#ffd84a' },
   };
   function drawIcon(ctx, icon, x, y) {
@@ -209,7 +210,11 @@
           a.wait -= dt;
           if (a.wait <= 0) {
             const others = actors.filter((o) => o !== a);
-            if (a.cat.social === 2 && others.length && Math.random() < 0.6) {
+            if (opts.snackOn && opts.snackOn() && Math.random() < 0.55) {
+              // 간식이 놓여 있으면 밥그릇으로 간다
+              a.tx = clamp(143 + rnd(-6, 10), b.x0, b.x1);
+              a.ty = clamp(154 + rnd(-3, 6), b.y0, b.y1);
+            } else if (a.cat.social === 2 && others.length && Math.random() < 0.6) {
               // 친화적인 고양이는 다른 고양이 곁으로 간다
               const o = others[Math.floor(Math.random() * others.length)];
               a.tx = clamp(o.x + (Math.random() < 0.5 ? -20 : 20), b.x0, b.x1);
@@ -228,6 +233,18 @@
         a.y += (dy / dist) * speed * dt;
         if (Math.abs(dx) > 1) a.flip = dx < 0;
       });
+
+      // 밥그릇 앞에서 냠냠
+      if (opts.snackOn && opts.snackOn()) {
+        actors.forEach((a) => {
+          if (a.emote || a.emoteCool > 0) return;
+          const nearBowl = Math.abs(a.x + 16 - 159) < 14 && Math.abs(a.y - 154) < 9;
+          if (!nearBowl) return;
+          a.emote = { kind: 'eat', until: time + 2.6, t0: time };
+          a.emoteCool = rnd(6, 10);
+          if (opts.onReact && time - lastMsg > 6) { lastMsg = time; opts.onReact('eat', a, a); }
+        });
+      }
 
       // 가까이 있는 고양이끼리 반응
       actors.forEach((a) => {
@@ -282,6 +299,12 @@
 
     function draw(t) {
       ctx.drawImage(background(season), 0, 0);
+      if (opts.snackOn && opts.snackOn()) {         // 간식이 소복
+        ctx.fillStyle = '#b9733c'; ctx.fillRect(152, 144, 14, 5);
+        ctx.fillStyle = '#c98550'; ctx.fillRect(154, 142, 10, 3);
+        ctx.fillStyle = '#8a4b2a';
+        [[155, 145], [160, 146], [163, 144], [158, 143]].forEach(([x, y]) => ctx.fillRect(x, y, 2, 1));
+      }
       drawParticles(ctx, season, t);
       actors.slice().sort((a, b) => a.y - b.y).forEach((a) => {
         // 신난 고양이는 콩콩 뛴다
@@ -312,7 +335,21 @@
     setCats(opts.me, opts.visitors);
     raf = requestAnimationFrame(loop);
 
+    // 손님 목록을 바꾼다. 남는 손님은 그대로 두고, 새 손님은 오른쪽에서 들어온다.
+    function setVisitors(ids) {
+      const b = bounds();
+      const keep = actors.filter((a) => a.isMe || ids.includes(a.poolIndex));
+      const have = new Set(keep.map((a) => a.poolIndex));
+      const added = ids.filter((k) => !have.has(k)).map((k) => {
+        const a = makeActor(Cat.catById(k), { poolIndex: k });
+        a.x = W - 30; a.y = rnd(b.y0, b.y1); a.wait = 0;
+        return a;
+      });
+      actors = keep.concat(added);
+    }
+
     return {
+      setVisitors,
       setSeason(s) { season = s; },
       get season() { return season; },
       stop() { cancelAnimationFrame(raf); canvas.removeEventListener('click', onClick); },

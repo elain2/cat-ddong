@@ -184,7 +184,9 @@
 
   // 30분마다 손님이 바뀐다. 반환값은 도감 id 배열.
   // season을 넘기면 절반쯤의 확률로 그 계절의 한정 손님이 한 자리를 차지한다.
-  function visitorsFor(now, count, season) {
+  // bonus(간식이 놓여 있음)면 기본 손님은 그대로 두고 2마리가 더 온다.
+  // 이때 한정 손님이 아직 없으면 70% 확률로 그 계절의 한정 손님이 합류한다.
+  function visitorsFor(now, count, season, bonus) {
     const slot = Math.floor(now / (30 * 60 * 1000));
     const r = rng(hashStr('slot-' + slot));
     const ids = [];
@@ -197,6 +199,21 @@
     if (season && roll < 0.5) {
       const specials = limitedIdsOf(season);
       ids[count - 1] = specials[Math.floor(pickIdx * specials.length)];
+    }
+    if (bonus) {
+      const r2 = rng(hashStr('extra-' + slot));
+      const extra = [];
+      while (extra.length < 2) {
+        const k = Math.floor(r2() * POOL_SIZE);
+        if (!ids.includes(k) && !extra.includes(k)) extra.push(k);
+      }
+      const roll2 = r2();
+      const pick2 = r2();
+      if (season && !ids.some((k) => k >= LIMITED_BASE) && roll2 < 0.7) {
+        const specials = limitedIdsOf(season);
+        extra[1] = specials[Math.floor(pick2 * specials.length)];
+      }
+      return ids.concat(extra);
     }
     return ids;
   }
