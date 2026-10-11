@@ -132,6 +132,7 @@
     note: { rows: ['..XXX', '..X.X', '..X..', 'XXX..', 'XXX..'], color: '#6b5b95' },
     dots: { rows: ['XX.XX.XX', 'XX.XX.XX'], color: '#2b2333' },
     zzz: { rows: ['XXX', '..X', '.X.', 'XXX'], color: '#6b5b95' },
+    look: { rows: ['.XXX.', 'X...X', '...X.', '..X..', '..X..', '.....', '..X..'], color: '#4f7fd2' },
     eat: { rows: ['.XXXX.X', 'XXXXXXX', '.XXXX.X'], color: '#6fb7e8' },
     star: { rows: ['..X..', '..X..', 'XXXXX', '.XXX.', '.X.X.'], color: '#ffd84a' },
   };
@@ -209,6 +210,27 @@
       }
     }
 
+    // 위에 앉은 a가 바닥의 o를 내려다본다. o는 올려다본다.
+    function lookDown(a, o) {
+      const A = a.cat, B = o.cat;
+      let kind = 'look';
+      if (A.social === 2) kind = 'heart';
+      else if (A.social === 0) kind = 'dots';
+      else if (A.energy === 2) kind = 'note';
+      a.emote = { kind, until: time + 2.8, t0: time, down: true };
+      a.flip = o.x < a.x;
+      a.emoteCool = rnd(4, 8);
+
+      if (!o.emote && !o.held) {
+        let reply = 'look';                                  // 올려다보기 ?
+        if (kind === 'heart' && B.social > 0) reply = 'heart';
+        else if (B.social === 0) reply = 'annoyed';          // 뭘 쳐다봐
+        o.emote = { kind: reply, until: time + 2.4, t0: time + 0.5 };
+        o.emoteCool = rnd(6, 10);
+      }
+      if (opts.onReact && time - lastMsg > 6) { lastMsg = time; opts.onReact('lookdown', a, o); }
+    }
+
     function update(dt) {
       const b = bounds();
       time += dt;
@@ -241,6 +263,17 @@
         a.x += (dx / dist) * speed * dt;
         a.y += (dy / dist) * speed * dt;
         if (Math.abs(dx) > 1) a.flip = dx < 0;
+      });
+
+      // 높은 곳(캣타워/선반/창틀)에 앉은 고양이가 가끔 아래를 내려다본다
+      actors.forEach((a) => {
+        if (!a.perch || a.held || a.emote) return;
+        if (a.perchCool === undefined) a.perchCool = rnd(3, 6);
+        a.perchCool -= dt;
+        if (a.perchCool > 0) return;
+        a.perchCool = rnd(8, 14);
+        const below = actors.filter((o) => o !== a && !o.perch && !o.held);
+        if (below.length) lookDown(a, below[Math.floor(Math.random() * below.length)]);
       });
 
       // 밥그릇 앞에서 냠냠
@@ -295,8 +328,10 @@
     function emoteIcon(a) {
       const e = a.emote;
       const p = (time - e.t0) / (e.until - e.t0);           // 0 → 1
+      if (p < 0) return;                                     // 아직 시작 전(올려다보기 지연)
       if (p > 0.8 && Math.floor(time * 8) % 2) return;       // 끝날 때 깜빡
-      const x = Math.round(a.x) + 12, y = Math.round(a.y) - 44 - Math.round(p * 6);
+      let x = Math.round(a.x) + 12, y = Math.round(a.y) - 44 - Math.round(p * 6);
+      if (y < 2) { x = Math.round(a.x) + 27; y = Math.round(a.y) - 26 - Math.round(p * 4); }  // 천장 근처는 옆에
       if (e.kind === 'zzz') {
         [[0, 0, 0.0], [5, -5, 0.25], [10, -10, 0.5]].forEach(([dx, dy, from]) => {
           if (p >= from) drawIcon(ctx, ICONS.zzz, x + dx, y + dy + 4);
@@ -335,8 +370,10 @@
           return;
         }
         // 신난 고양이는 콩콩 뛴다
-        const hop = a.emote && a.emote.kind === 'note' ? Math.round(Math.abs(Math.sin(time * 9)) * 3) : 0;
-        Render.drawGrid(ctx, frameOf(a), 1, Math.round(a.x), Math.round(a.y) - 31 - hop, a.flip);
+        const hop = a.emote && a.emote.kind === 'note' && !a.emote.down
+          ? Math.round(Math.abs(Math.sin(time * 9)) * 3) : 0;
+        const lean = a.emote && a.emote.down ? 1 : 0;       // 내려다보느라 살짝 숙임
+        Render.drawGrid(ctx, frameOf(a), 1, Math.round(a.x), Math.round(a.y) - 31 - hop + lean, a.flip);
         if (a.emote) emoteIcon(a); else marker(a, t);
       });
     }

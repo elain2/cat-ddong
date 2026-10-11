@@ -234,6 +234,7 @@
           zzz: `${x}: 꾸벅꾸벅…`,
           dots: `${x} → ${y}: 가만히 쳐다봐…`,
           eat: `${x}: 냠냠, 간식 맛있다!`,
+          lookdown: `${x}(${a.perch ? a.perch.label : '높은 곳'}) → ${y}: 내려다봐…`,
         };
         say(lines[kind]);
       },
