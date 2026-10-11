@@ -126,6 +126,17 @@
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       }),
     });
+    const gif = el('button', {
+      className: 'btn ghost', textContent: 'GIF로 저장 (움직임)',
+      onclick: () => {
+        const blob = Render.toGifBlob(cat);
+        if (!blob) { say('색이 너무 많아서 GIF로 만들 수 없어. PNG로 저장해 줘.'); return; }
+        const a = el('a', { href: URL.createObjectURL(blob), download: cat.name + '.gif' });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        say('움직이는 GIF로 저장했어!');
+      },
+    });
     const again = el('button', { className: 'btn ghost', textContent: '다시 하기', onclick: intro });
 
     const card = el('div', { className: 'card' }, [
@@ -136,7 +147,7 @@
       tags,
       reasons,
     ]);
-    show(card, enter, el('div', { className: 'row' }, [save, again]));
+    show(card, enter, el('div', { className: 'row' }, [save, gif]), again);
     cleanup = Render.animate(canvas, cat);
   }
 

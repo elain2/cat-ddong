@@ -558,5 +558,13 @@
     c.toBlob(cb, 'image/png');
   }
 
-  root.Render = { buildFrame, framesOf, sequenceOf, drawGrid, animate, toPngBlob, N };
+  // 움직이는 모습을 GIF로 (눈 깜빡임, 꼬리 흔들림). 색이 너무 많으면 null.
+  function toGifBlob(cat) {
+    const frames = framesOf(cat);
+    const seq = sequenceOf(cat).map(([f, ms]) => ({ grid: frames[f], delay: ms }));
+    const bytes = root.Gif.encode(seq, 8, '#fff3e0');
+    return bytes ? new Blob([bytes], { type: 'image/gif' }) : null;
+  }
+
+  root.Render = { buildFrame, framesOf, sequenceOf, drawGrid, animate, toPngBlob, toGifBlob, N };
 })(typeof window !== 'undefined' ? window : globalThis);
