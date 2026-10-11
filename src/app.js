@@ -49,7 +49,20 @@
   function intro() {
     say('어서 와냥. 여기는 고양이 사랑방이야. 몇 가지만 물어보면 너를 닮은 고양이가 찾아올 거야.');
     picks = [];
-    show(el('button', { className: 'btn', textContent: '시작하기', onclick: () => ask(0) }));
+    show(
+      el('button', { className: 'btn', textContent: '시작하기', onclick: () => ask(0) }),
+      el('button', { className: 'btn ghost', textContent: '설문 건너뛰고 바로 만들기 (랜덤)', onclick: () => skipSurvey(0) }),
+    );
+  }
+
+  // 남은 문항을 무작위로 채우고 바로 이름 입력으로 간다. 이미 답한 문항은 그대로 둔다.
+  function skipSurvey(from) {
+    QUESTIONS.forEach((q, i) => {
+      if (i >= from && picks[i] === undefined) {
+        picks[i] = q.options[Math.floor(Math.random() * q.options.length)].value;
+      }
+    });
+    nickname(true);
   }
 
   function ask(i) {
@@ -63,11 +76,17 @@
         textContent: o.label,
         onclick: () => { picks[i] = o.value; i + 1 < QUESTIONS.length ? ask(i + 1) : nickname(); },
       }));
-    show(dots, ...opts);
+    const skip = el('button', {
+      className: 'btn ghost skip', textContent: '건너뛰기 (나머지는 랜덤)',
+      onclick: () => skipSurvey(i),
+    });
+    show(dots, ...opts, skip);
   }
 
-  function nickname() {
-    say('마지막이야. 네 이름이나 별명을 알려줘. 고양이 옆에 붙여 줄게. 비워둬도 돼.');
+  function nickname(skipped) {
+    say(skipped
+      ? '설문은 건너뛰고 랜덤으로 만들어 줄게! 네 이름이나 별명만 알려줘. 비워둬도 돼.'
+      : '마지막이야. 네 이름이나 별명을 알려줘. 고양이 옆에 붙여 줄게. 비워둬도 돼.');
     const input = el('input', { type: 'text', maxLength: 12, placeholder: '이름 / 별명 (선택)', className: 'input' });
     const go = () => summon(input.value);
     input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); });
