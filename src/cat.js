@@ -218,6 +218,20 @@
     return ids;
   }
 
+  // 백업 코드에서 불러온 고양이를 검증하고 이름/타이틀을 다시 계산한다.
+  function normalizeCat(o) {
+    if (!o || typeof o !== 'object') return null;
+    const lv = (v) => Number.isInteger(v) && v >= 0 && v <= 2;
+    if (![o.energy, o.social, o.delicacy, o.boldness].every(lv)) return null;
+    if (!['cream', 'orange', 'black', 'gray'].includes(o.fur)) return null;
+    if (!['none', 'tie', 'glasses', 'bell', 'bottle'].includes(o.accessory)) return null;
+    if (!Number.isFinite(o.seed)) return null;
+    return finish({
+      energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
+      fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
+    });
+  }
+
   function reasonsOf(cat) {
     return [
       REASONS.energy[cat.energy],
@@ -230,7 +244,7 @@
   }
 
   root.Cat = {
-    buildCat, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, normalizeCat, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
