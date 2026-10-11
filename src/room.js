@@ -100,6 +100,14 @@
   }
   const OUT = '#2b2333';
 
+  // 올라앉을 수 있는 자리: 고양이 발(발바닥 y)이 이 높이에 닿으면 앉는다.
+  const PERCHES = [
+    { label: '캣타워 꼭대기', x0: 196, x1: 226, y: 62 },
+    { label: '캣타워 중간', x0: 198, x1: 224, y: 100 },
+    { label: '선반', x0: 112, x1: 208, y: 32 },
+    { label: '창틀', x0: 20, x1: 84, y: 60 },
+  ];
+
   // 창 밖 파티클 (봄 꽃잎, 가을 낙엽, 겨울 눈, 여름 반짝임)
   const PARTICLE_COLOR = { spring: '#f7b6c8', autumn: '#c8693a', winter: '#ffffff', summer: '#ffffff' };
   function drawParticles(ctx, season, t) {
@@ -206,6 +214,7 @@
       time += dt;
       actors.forEach((a) => {
         a.clock += dt * 1000;
+        if (a.held || a.perch) return;        // 잡혀 있거나 높은 곳에 앉아 있다
         if (a.tx === null) {
           a.wait -= dt;
           if (a.wait <= 0) {
@@ -237,7 +246,7 @@
       // 밥그릇 앞에서 냠냠
       if (opts.snackOn && opts.snackOn()) {
         actors.forEach((a) => {
-          if (a.emote || a.emoteCool > 0) return;
+          if (a.held || a.emote || a.emoteCool > 0) return;
           const nearBowl = Math.abs(a.x + 16 - 159) < 14 && Math.abs(a.y - 154) < 9;
           if (!nearBowl) return;
           a.emote = { kind: 'eat', until: time + 2.6, t0: time };
@@ -250,7 +259,7 @@
       actors.forEach((a) => {
         a.emoteCool -= dt;
         if (a.emote && time > a.emote.until) a.emote = null;
-        if (a.emote || a.emoteCool > 0) return;
+        if (a.held || a.emote || a.emoteCool > 0) return;
         const o = actors.find((c) => c !== a && near(a, c));
         if (o) react(a, o);
       });
@@ -306,7 +315,25 @@
         [[155, 145], [160, 146], [163, 144], [158, 143]].forEach(([x, y]) => ctx.fillRect(x, y, 2, 1));
       }
       drawParticles(ctx, season, t);
-      actors.slice().sort((a, b) => a.y - b.y).forEach((a) => {
+
+      // 들고 있는 고양이가 앉을 수 있는 자리를 반짝여 알려준다
+      if (drag && drag.moved) {
+        const P = perchAt(drag.a.x + 16, drag.a.y);
+        if (P && Math.floor(t / 180) % 2 === 0) {
+          ctx.fillStyle = '#ffd84a';
+          ctx.fillRect(P.x0 - 2, P.y - 1, P.x1 - P.x0 + 4, 3);
+        }
+      }
+
+      actors.slice().sort((a, b) => (a.held ? 1000 : 0) + a.y - ((b.held ? 1000 : 0) + b.y)).forEach((a) => {
+        if (a.held) {
+          // 번쩍 들린 고양이: 바닥에 그림자, 몸은 살짝 위로
+          ctx.fillStyle = 'rgba(43,35,51,0.22)';
+          ctx.fillRect(Math.round(a.x) + 8, Math.round(a.y) + 2, 16, 3);
+          const sway = Math.floor(t / 160) % 2 ? 1 : 0;
+          Render.drawGrid(ctx, a.frames[1], 1, Math.round(a.x) + sway, Math.round(a.y) - 31 - 5, a.flip);
+          return;
+        }
         // 신난 고양이는 콩콩 뛴다
         const hop = a.emote && a.emote.kind === 'note' ? Math.round(Math.abs(Math.sin(time * 9)) * 3) : 0;
         Render.drawGrid(ctx, frameOf(a), 1, Math.round(a.x), Math.round(a.y) - 31 - hop, a.flip);
@@ -322,15 +349,82 @@
       raf = requestAnimationFrame(loop);
     }
 
-    function onClick(ev) {
+    // ---- 집어서 옮기기 ----
+    // 가볍게 누르면 '만나기', 끌면 '옮기기'. 놓은 자리가 가구 위면 올라앉는다.
+    let drag = null;   // { a, offX, offY, sx, sy, moved }
+
+    function toLogical(ev) {
       const r = canvas.getBoundingClientRect();
-      const px = ((ev.clientX - r.left) / r.width) * W;
-      const py = ((ev.clientY - r.top) / r.height) * H;
-      const hit = actors.slice().sort((a, b) => b.y - a.y).find((a) =>
-        px >= a.x + 6 && px <= a.x + 26 && py >= a.y - 30 && py <= a.y + 1);
-      if (hit) opts.onPick(hit);
+      return { px: ((ev.clientX - r.left) / r.width) * W, py: ((ev.clientY - r.top) / r.height) * H };
     }
-    canvas.addEventListener('click', onClick);
+    function hitTest(px, py) {
+      return actors.slice().sort((a, b) => b.y - a.y).find((a) =>
+        px >= a.x + 6 && px <= a.x + 26 && py >= a.y - 30 && py <= a.y + 1);
+    }
+    function perchAt(cx, feetY) {
+      return PERCHES.find((p) => cx >= p.x0 - 6 && cx <= p.x1 + 6 && Math.abs(feetY - p.y) <= 12) || null;
+    }
+
+    function drop() {
+      const a = drag.a;
+      const P = perchAt(a.x + 16, a.y);
+      a.held = false;
+      a.emote = null;
+      if (P) {
+        a.perch = P;
+        a.x = clamp(a.x + 16, P.x0 + 8, P.x1 - 8) - 16;
+        a.y = P.y + 1;
+        a.tx = a.ty = null;
+      } else {
+        const b = bounds();
+        a.perch = null;
+        a.x = clamp(a.x, b.x0, b.x1);
+        a.y = clamp(a.y, b.y0, b.y1);
+        a.tx = a.ty = null;
+        a.wait = rnd(2, 5);
+      }
+      a.emoteCool = rnd(2, 4);
+      if (opts.onMove) opts.onMove(a, P);
+    }
+
+    function onDown(ev) {
+      const { px, py } = toLogical(ev);
+      const a = hitTest(px, py);
+      if (!a) return;
+      drag = { a, offX: px - a.x, offY: py - a.y, sx: px, sy: py, moved: false };
+      try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* 무시 */ }
+    }
+    function onMove(ev) {
+      const { px, py } = toLogical(ev);
+      if (!drag) {
+        canvas.style.cursor = hitTest(px, py) ? 'grab' : 'default';
+        return;
+      }
+      if (!drag.moved && Math.hypot(px - drag.sx, py - drag.sy) > 3) {
+        drag.moved = true;
+        drag.a.held = true;
+        drag.a.perch = null;
+        drag.a.tx = drag.a.ty = null;
+        drag.a.emote = null;
+        canvas.style.cursor = 'grabbing';
+      }
+      if (drag.moved) {
+        drag.a.x = clamp(px - drag.offX, -4, W - 28);
+        drag.a.y = clamp(py - drag.offY, 20, H - 2);
+        drag.a.flip = px < drag.sx ? true : drag.a.flip;
+      }
+    }
+    function onUp() {
+      if (!drag) return;
+      if (drag.moved) drop(); else if (opts.onPick) opts.onPick(drag.a);
+      drag = null;
+      canvas.style.cursor = 'grab';
+    }
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onUp);
 
     setCats(opts.me, opts.visitors);
     raf = requestAnimationFrame(loop);
@@ -352,7 +446,13 @@
       setVisitors,
       setSeason(s) { season = s; },
       get season() { return season; },
-      stop() { cancelAnimationFrame(raf); canvas.removeEventListener('click', onClick); },
+      stop() {
+        cancelAnimationFrame(raf);
+        canvas.removeEventListener('pointerdown', onDown);
+        canvas.removeEventListener('pointermove', onMove);
+        canvas.removeEventListener('pointerup', onUp);
+        canvas.removeEventListener('pointercancel', onUp);
+      },
     };
   }
 

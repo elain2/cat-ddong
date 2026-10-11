@@ -237,6 +237,10 @@
         };
         say(lines[kind]);
       },
+      onMove(actor, perch) {
+        const n = actor.cat.name;
+        say(perch ? `${n}: ${perch.label} 위에서 내려다보는 중!` : `${n}: 여기도 좋은데?`);
+      },
       onPick(actor) {
         if (actor.isMe) {
           say(`${me.owner ? me.owner + '의 ' : '내 '}고양이 ${me.name}! ${me.title}`);
