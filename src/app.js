@@ -602,13 +602,13 @@
       photoBtn.disabled = true;
       try {
         if (document.fonts && document.fonts.load) await document.fonts.load('28px Galmuri11');
-        const COLS = 10, CELL = 76, PAD = 24;
+        const COLS = 10, CELL = 76, CELLH = 92, PAD = 24;   // 칸: 가로 76, 세로 92 (고양이 64 + 이름 자리)
         const W = COLS * CELL + PAD * 2;
         const normalIds = Array.from({ length: Cat.POOL_SIZE }, (_, k) => k);
         const limitedIds = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
         const rows = (n) => Math.ceil(n / COLS);
         const HEAD = 150, SEC = 44, FOOT = 56;
-        const H = HEAD + SEC + rows(normalIds.length) * CELL + SEC + rows(limitedIds.length) * CELL + FOOT + 12;
+        const H = HEAD + SEC + rows(normalIds.length) * CELLH + SEC + rows(limitedIds.length) * CELLH + FOOT + 12;
 
         const c = document.createElement('canvas');
         c.width = W; c.height = H;
@@ -643,19 +643,20 @@
           const top = y0 + SEC;
           ids.forEach((id, i) => {
             const cx = PAD + (i % COLS) * CELL;
-            const cy = top + Math.floor(i / COLS) * CELL;
+            const cy = top + Math.floor(i / COLS) * CELLH;
             const cat = Cat.catById(id);
             const got = met.has(id);
             x.fillStyle = got ? '#fffaf0' : '#f6ead2';
-            x.fillRect(cx + 3, cy + 3, CELL - 6, CELL - 6);
+            x.fillRect(cx + 3, cy + 3, CELL - 6, CELLH - 6);
             x.strokeStyle = got ? INK : '#d9c8a8'; x.lineWidth = 2;
-            x.strokeRect(cx + 3, cy + 3, CELL - 6, CELL - 6);
-            Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy + 2, false, got ? null : '#d9c8a8');
+            x.strokeRect(cx + 3, cy + 3, CELL - 6, CELLH - 6);
+            // 고양이는 윗줄 3칸이 비어 있어서 살짝 위로 올려 이름 자리를 확보한다
+            Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy - 2, false, got ? null : '#d9c8a8');
             x.textAlign = 'center';
-            x.fillStyle = got ? INK : '#c4b08a'; x.font = FONT(12);
-            x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELL - 6);
+            x.fillStyle = got ? INK : '#c4b08a'; x.font = FONT(13);
+            x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELLH - 14);
           });
-          return top + rows(ids.length) * CELL;
+          return top + rows(ids.length) * CELLH;
         };
         let y = HEAD;
         y = drawSection(`도감 ${n.normal}/${Cat.POOL_SIZE}`, normalIds, y);
