@@ -306,8 +306,9 @@
   }
 
   // slot(30분 단위)마다 손님이 선물을 들고 오는지. 없으면 null.
-  function giftOf(catId, slot) {
-    const r = rng(hashStr(`gift-${slot}-${catId}`));
+  // who: 사람마다 다른 시드. 같은 시각에 접속한 친구와 손님·선물이 겹치지 않는다.
+  function giftOf(catId, slot, who) {
+    const r = rng(hashStr(`gift-${slot}-${catId}-${who == null ? '' : who}`));
     if (r() > GIFT_RATE) return null;
     const own = catById(catId).accessory;
     if (own && own !== 'none' && GIFT_IDS.includes(own)) return own;
@@ -330,9 +331,11 @@
   // season을 넘기면 절반쯤의 확률로 그 계절의 한정 손님이 한 자리를 차지한다.
   // bonus(간식이 놓여 있음)면 기본 손님은 그대로 두고 2마리가 더 온다.
   // 이때 한정 손님이 아직 없으면 70% 확률로 그 계절의 한정 손님이 합류한다.
-  function visitorsFor(now, count, season, bonus) {
+  // who: 사람마다 다른 시드(같은 시각에도 손님이 다르다). 같은 사람은 같은 슬롯에 항상 같은 손님이다.
+  function visitorsFor(now, count, season, bonus, who) {
     const slot = Math.floor(now / (30 * 60 * 1000));
-    const r = rng(hashStr('slot-' + slot));
+    const tag = who == null ? '' : '-' + who;
+    const r = rng(hashStr('slot-' + slot + tag));
     const ids = [];
     while (ids.length < count) {
       const k = Math.floor(r() * POOL_SIZE);
@@ -345,7 +348,7 @@
       ids[count - 1] = specials[Math.floor(pickIdx * specials.length)];
     }
     if (bonus) {
-      const r2 = rng(hashStr('extra-' + slot));
+      const r2 = rng(hashStr('extra-' + slot + tag));
       const extra = [];
       while (extra.length < 2) {
         const k = Math.floor(r2() * POOL_SIZE);

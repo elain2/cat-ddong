@@ -16,6 +16,7 @@
   const SNACK_CAP_MS = 2 * 60 * 60 * 1000;   // 연장해도 남은 시간은 최대 2시간
   const KEY_GIFTS = 'cat-ddong.gifts';        // 가진 선물 id 목록
   const KEY_TAKEN = 'cat-ddong.gift-taken';   // 이미 받은 선물 '슬롯:고양이id'
+  const KEY_PLAYER = 'cat-ddong.player';      // 사람마다 다른 시드 (손님/선물 순서가 친구와 겹치지 않게)
   const KEY_LOG = 'cat-ddong.log';   // 손님별 방문 기록 {id: {n, first, last, prev, slot}}
   const SLOT_MS = 30 * 60 * 1000;
   const BACKUP_PREFIX = 'CATDDONG1:';
@@ -159,6 +160,7 @@
       log: store.get(KEY_LOG, {}),
       snack: store.get(KEY_SNACK, {}),
       gifts: store.get(KEY_GIFTS, []),
+      player: store.get(KEY_PLAYER, null),
     };
     const bytes = new TextEncoder().encode(JSON.stringify(data));
     return BACKUP_PREFIX + btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
@@ -197,7 +199,8 @@
       };
       const gifts = Array.isArray(raw.gifts)
         ? [...new Set(raw.gifts.filter((g) => Cat.GIFT_IDS.includes(g)))] : [];
-      return { me, met, log, snack, gifts };
+      const player = Number.isInteger(raw.player) && raw.player >= 0 && raw.player < 4294967296 ? raw.player : null;
+      return { me, met, log, snack, gifts, player };
     } catch (e) {
       return null;
     }
@@ -245,7 +248,15 @@
     const saveSnack = () => store.set(KEY_SNACK, snack);
     saveSnack();
     const snackOn = () => Date.now() < snack.until;
-    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, nowSeason, snackOn());
+    // 처음 한 번 정한 나만의 시드. 이게 없으면 같은 시각에 접속한 사람은 모두 같은 손님을 만난다.
+    let player = store.get(KEY_PLAYER, null);
+    if (!Number.isInteger(player)) {
+      const buf = new Uint32Array(1);
+      if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(buf); else buf[0] = Math.floor(Math.random() * 4294967296);
+      player = buf[0] >>> 0;
+      store.set(KEY_PLAYER, player);
+    }
+    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, nowSeason, snackOn(), player);
     const visitors = visitorIds();
     recordVisits(visitors);
     let visitorKey = `${slotNow()}:${visitors.join(',')}`;
@@ -262,7 +273,7 @@
       if (id === undefined) return null;
       const slotId = slotNow();
       if (taken.has(`${slotId}:${id}`)) return null;
-      return Cat.giftOf(id, slotId);
+      return Cat.giftOf(id, slotId, player);
     };
     const countMet = () => {
       const ids = [...met];
@@ -515,6 +526,7 @@
         store.set(KEY_LOG, data.log);
         store.set(KEY_SNACK, data.snack);
         store.set(KEY_GIFTS, data.gifts);
+        if (data.player !== null) store.set(KEY_PLAYER, data.player);
         location.reload();
       },
     });
