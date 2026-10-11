@@ -602,7 +602,7 @@
       photoBtn.disabled = true;
       try {
         if (document.fonts && document.fonts.load) await document.fonts.load('28px Galmuri11');
-        const COLS = 10, CELL = 76, CELLH = 84, PAD = 24;   // 칸: 가로 76, 세로 84 (고양이 + 이름이 딱 맞게)
+        const COLS = 10, CELL = 76, CELLH = 89, PAD = 24;   // 칸: 가로 76, 세로 89 (위 여백 = 이름 아래 여백)
         const W = COLS * CELL + PAD * 2;
         const normalIds = Array.from({ length: Cat.POOL_SIZE }, (_, k) => k);
         const limitedIds = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
@@ -650,8 +650,8 @@
             x.fillRect(cx + 3, cy + 3, CELL - 6, CELLH - 6);
             x.strokeStyle = got ? INK : '#d9c8a8'; x.lineWidth = 2;
             x.strokeRect(cx + 3, cy + 3, CELL - 6, CELLH - 6);
-            // 고양이는 윗줄 3칸이 비어 있어서 살짝 위로 올려 이름 자리를 확보한다
-            Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy - 2, false, got ? null : '#d9c8a8');
+            // 고양이 그림의 윗줄 3칸(6px)은 비어 있다. 귀 끝이 칸 위에서 6px 떨어지도록, 이름 아래 여백과 맞춘다.
+            Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy + 3, false, got ? null : '#d9c8a8');
             x.textAlign = 'center';
             x.fillStyle = got ? INK : '#c4b08a'; x.font = FONT(13);
             x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELLH - 9);   // 이름은 칸 아래쪽에 붙인다
