@@ -129,7 +129,7 @@
     return Object.assign({}, cat, { accessories: outfitOf(cat) });
   }
 
-  const GIFT_RATE = 0.3;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
+  const GIFT_RATE = 0.45;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
 
   // 시즌 한정 손님: 그 계절에만 놀러 온다. id는 100번부터, 계절마다 3마리.
   const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
