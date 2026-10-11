@@ -386,6 +386,64 @@
       el('div', { className: 'row' }, [exportBtn, importBtn]),
     ]);
 
+    // 자랑하기: 도감 고양이들이 줄지어 들어와 인사하는 영상
+    function openShowcase() {
+      const ids = [...met];
+      // 한정 손님 먼저, 그다음 방문 많은 순
+      ids.sort((a, b) =>
+        (b >= Cat.LIMITED_BASE) - (a >= Cat.LIMITED_BASE) ||
+        ((log[b] && log[b].n) || 0) - ((log[a] && log[a].n) || 0) || a - b);
+      const n = countMet();
+      const canvas = el('canvas', { className: 'stage' });
+      const note = el('p', { className: 'stage-note' });
+      say(ids.length
+        ? '도감 고양이들이 인사하러 모였어! 영상으로 저장해서 자랑해 봐.'
+        : '아직 도감이 비어 있어. 사랑방에서 손님을 먼저 만나 보자!');
+
+      const stage = Showcase.mount(canvas, {
+        me,
+        cats: ids.map(Cat.catById),
+        title: me.name,
+        stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
+        season: nowSeason,
+        url: 'elain2.github.io/cat-ddong',
+      });
+
+      const download = (blob, name) => {
+        const a = el('a', { href: URL.createObjectURL(blob), download: name });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      };
+      const recBtn = el('button', { className: 'btn' });
+      recBtn.textContent = '🎬 영상으로 저장';
+      recBtn.onclick = () => {
+        recBtn.disabled = true;
+        note.textContent = `녹화 중이에요… (${Showcase.DUR}초) 이 탭을 켜 둔 채로 기다려 주세요.`;
+        stage.record(
+          (blob, ext) => {
+            download(blob, `${me.name}-고양이사랑방.${ext}`);
+            note.textContent = ext === 'webm'
+              ? '저장했어요! (webm 형식이에요. 인스타 등에는 mp4 변환이 필요할 수 있어요.)'
+              : '저장했어요!';
+            recBtn.disabled = false;
+          },
+          (msg) => { note.textContent = msg; recBtn.disabled = false; },
+          (p) => { note.textContent = `녹화 중이에요… ${Math.round(p * 100)}%  (탭을 켜 둔 채로 기다려 주세요)`; },
+        );
+      };
+      const photoBtn = el('button', {
+        className: 'btn ghost', textContent: '🖼 사진으로 저장',
+        onclick: () => stage.snapshot((blob) => { download(blob, `${me.name}-고양이사랑방.png`); note.textContent = '사진을 저장했어요!'; }),
+      });
+      const replayBtn = el('button', { className: 'btn ghost', textContent: '↻ 처음부터', onclick: () => stage.replay() });
+      const back = el('button', { className: 'btn ghost', textContent: '← 사랑방으로', onclick: () => room(me) });
+
+      show(canvas, note, el('div', { className: 'row' }, [recBtn, photoBtn]),
+        el('div', { className: 'row' }, [replayBtn, back]));
+      cleanup = () => stage.stop();
+    }
+
+    const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
     const mine = el('button', { className: 'btn ghost', textContent: '내 고양이 보기', onclick: () => result(me) });
     const again = el('button', {
       className: 'btn ghost', textContent: '다시 하기',
@@ -395,6 +453,7 @@
     show(canvas, snackBar, seasonRow, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
+      brag,
       el('div', { className: 'row' }, [mine, again]));
     cleanup = () => { handle.stop(); clearInterval(timer); };
   }

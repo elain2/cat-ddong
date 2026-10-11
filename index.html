@@ -98,6 +98,12 @@
       width: 100%; aspect-ratio: 240 / 176; display: block; cursor: pointer;
       border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
     }
+    .stage {
+      width: 100%; max-width: 360px; aspect-ratio: 9 / 16; display: block; margin: 0 auto;
+      border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: #fff;
+      image-rendering: pixelated;
+    }
+    .stage-note { font-size: 12px; color: #a89878; text-align: center; margin: 0; min-height: 18px; }
     .snack {
       display: flex; gap: 10px; align-items: center; justify-content: space-between;
       background: var(--card); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
@@ -137,6 +143,7 @@
   <script src="src/cat.js"></script>
   <script src="src/render.js"></script>
   <script src="src/room.js"></script>
+  <script src="src/showcase.js"></script>
   <script src="src/app.js"></script>
 </body>
 </html>
