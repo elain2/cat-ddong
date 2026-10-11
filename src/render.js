@@ -222,7 +222,25 @@
       pset(g, 31 - 11, top, WHITE);
       if (b === 2) { pset(g, 11, 13, WHITE); pset(g, 31 - ex, 13, WHITE); }
     }
+    if (cat.eyeColor && e !== 0 && f !== 2) {        // 호스트 전용 눈동자 색
+      for (let y = top + 1; y <= 13; y++) mr(y, ex, 11, cat.eyeColor);
+      pset(g, ex, top + 1, WHITE);
+      pset(g, 31 - 11, top + 1, WHITE);
+      if (b === 2) { pset(g, 11, 13, WHITE); pset(g, 31 - ex, 13, WHITE); }
+    }
     if (s === 0) mr(10, ex, 11, OUT);          // 도도한 눈썹
+
+    // 호스트 전용 이마 무늬 (털색과 대비되는 색)
+    if (cat.mark) {
+      const MC = { cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a' }[cat.fur] || '#f06a9a';
+      const shapes = {
+        star: [[15, 9], [16, 9], [14, 10], [15, 10], [16, 10], [17, 10], [15, 11], [16, 11]],
+        heart: [[14, 10], [15, 10], [16, 10], [17, 10], [14, 11], [15, 11], [16, 11], [17, 11], [15, 12], [16, 12]],
+        bolt: [[16, 9], [17, 9], [15, 10], [16, 10], [15, 11], [16, 11], [14, 12], [15, 12]],
+        tabby: [[14, 10], [14, 11], [15, 9], [15, 10], [16, 9], [16, 10], [17, 10], [17, 11]],
+      };
+      (shapes[cat.mark] || []).forEach(([x, y]) => pset(g, x, y, MC));
+    }
 
     // 코와 입: 친화적이면 W, 독립적이면 일자
     sp(14, 15, 16, PINK);
@@ -482,7 +500,8 @@
   const frameCache = new Map();
   function framesOf(cat) {
     const key = JSON.stringify([cat.energy, cat.social, cat.delicacy, cat.boldness, cat.fur,
-      cat.accessory, (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style]);
+      cat.accessory, (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style,
+      cat.mark || '', cat.eyeColor || '']);
     if (!frameCache.has(key)) frameCache.set(key, [0, 1, 2].map((f) => buildFrame(cat, f)));
     return frameCache.get(key);
   }

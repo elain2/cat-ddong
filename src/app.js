@@ -582,5 +582,6 @@
 
   const saved = store.get(KEY_ME, null);
   if (saved && saved.accessory === 'headphones') saved.accessory = 'tie'; // 이름 변경 마이그레이션
+  if (saved) Cat.withSignature(saved);   // 예전에 만든 고양이에도 호스트 표식을 붙인다
   if (saved) room(saved); else intro();
 })();

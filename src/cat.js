@@ -196,7 +196,33 @@
     };
     cat.seed = hashStr(JSON.stringify([cat, (nickname || '').trim()]));
     cat.owner = cleanOwner(nickname);   // 시드 계산 뒤에 붙인다 (생김새에 영향 없음)
-    return finish(cat);
+    return withSignature(finish(cat));
+  }
+
+  // 호스트(내 고양이) 전용 표식. 도감/손님 고양이에게는 절대 붙지 않는다.
+  // 이마 무늬 4종 x 눈동자 색 4종이 시드로 정해지고, 도감과 같은 설문 조합이어도 한눈에 구별된다.
+  const MARKS = ['star', 'heart', 'bolt', 'tabby'];
+  const MARK_LABEL = { star: '별', heart: '하트', bolt: '번개', tabby: 'M자' };
+  const EYE_COLORS = ['#c8892a', '#3f9a5a', '#4f7fd2', '#8a5ac8'];
+  const EYE_LABEL = { '#c8892a': '호박색', '#3f9a5a': '초록색', '#4f7fd2': '파란색', '#8a5ac8': '보라색' };
+
+  function withSignature(cat) {
+    if (!cat || typeof cat !== 'object') return cat;
+    const r = rng(((cat.seed >>> 0) ^ 0x51ed270b) >>> 0);
+    const mark = MARKS[Math.floor(r() * MARKS.length)];
+    const eyeColor = EYE_COLORS[Math.floor(r() * EYE_COLORS.length)];
+    cat.mark = mark;
+    cat.eyeColor = eyeColor;
+    return cat;
+  }
+
+  // 도감(일반+한정)에 몸 형태·털색·악세사리가 완전히 같은 고양이가 있는지
+  function sameComboInAlbum(cat) {
+    const key = (c) => [c.energy, c.social, c.delicacy, c.boldness, c.fur, c.accessory].join('|');
+    const k = key(cat);
+    for (let i = 0; i < POOL_SIZE; i++) if (key(poolCat(i)) === k) return true;
+    for (let i = 0; i < LIMITED.length; i++) if (key(limitedCat(i)) === k) return true;
+    return false;
   }
 
   // 사용자가 넣은 이름: 공백 정리, 제어문자 제거, 12자까지
@@ -316,12 +342,12 @@
     if (!['cream', 'orange', 'black', 'gray'].includes(o.fur)) return null;
     if (!['none', 'tie', 'glasses', 'bell', 'bottle'].includes(o.accessory)) return null;
     if (!Number.isFinite(o.seed)) return null;
-    return finish({
+    return withSignature(finish({
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
       fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
       owner: cleanOwner(o.owner),
       worn: normalizeWorn(o.worn),
-    });
+    }));
   }
 
   function reasonsOf(cat) {
@@ -331,12 +357,13 @@
       REASONS.delicacy[cat.delicacy],
       REASONS.boldness[cat.boldness],
       REASONS.fur[cat.fur],
-    ].concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
+    ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
+    .concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
       .map((a) => REASONS.accessory[a]).filter(Boolean));
   }
 
   root.Cat = {
-    buildCat, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
