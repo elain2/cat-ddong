@@ -6,6 +6,10 @@
 설문에 답하면 **내 행동 패턴을 닮은 픽셀 고양이**가 찾아오는 브라우저 서비스예요.
 찾아온 고양이는 고양이들이 모이는 **사랑방**에서 다른 손님 고양이들과 어울리고, 만난 고양이는 **도감**에 모여요.
 
+<p align="center">
+  <a href="https://elain2.github.io/cat-ddong/"><img src="docs/og.png" alt="고양이 사랑방 미리보기" width="720"></a>
+</p>
+
 **▶ 바로 해보기: https://elain2.github.io/cat-ddong/**
 
 <p align="center">
