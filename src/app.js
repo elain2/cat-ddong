@@ -91,7 +91,8 @@
 
     const tags = el('div', { className: 'tags' }, [
       el('span', { className: 'tag', textContent: Cat.FUR_LABEL[cat.fur] }),
-      el('span', { className: 'tag', textContent: Cat.ACC_LABEL[cat.accessory] }),
+      ...(cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
+        .map((a) => el('span', { className: 'tag', textContent: Cat.ACC_LABEL[a] })),
     ]);
     const reasons = el('ul', { className: 'reasons' },
       Cat.reasonsOf(cat).map((t) => el('li', { textContent: t })));
@@ -222,9 +223,11 @@
     // ---- 선물: 손님이 가끔 악세사리를 들고 온다. 받으면 선물함에 들어가고 내 고양이가 착용할 수 있다. ----
     const owned = new Set((store.get(KEY_GIFTS, []) || []).filter((g) => Cat.GIFT_IDS.includes(g)));
     const taken = new Set(store.get(KEY_TAKEN, []));
-    if (me.worn && !owned.has(me.worn)) me.worn = null;   // 선물함에 없는 걸 입고 있을 수 없다
-    // 착용 중이면 악세사리만 바꾼 복사본을 보여 준다. 원본(me)의 설문 악세사리는 그대로 둔다.
-    const shown = () => (me.worn ? Object.assign({}, me, { accessory: me.worn }) : me);
+    // 슬롯별 착용 정리(예전 저장본은 문자열 하나). 선물함에 없는 건 입고 있을 수 없다.
+    me.worn = Cat.normalizeWorn(me.worn);
+    Object.keys(me.worn).forEach((s) => { if (!owned.has(me.worn[s])) delete me.worn[s]; });
+    // 입은 것 전체가 들어간 복사본을 보여 준다. 원본(me)의 설문 악세사리와 worn은 그대로 둔다.
+    const shown = () => Cat.dressed(me);
     const giftAvailable = (id) => {
       if (id === undefined) return null;
       const slotId = slotNow();
@@ -305,6 +308,16 @@
     const giftTitle = el('h3', { className: 'book-title' });
     const giftHint = el('p', { className: 'book-hint' });
     const giftGrid = el('div', { className: 'book' });
+    const undressBtn = el('button', {
+      className: 'btn ghost snack-btn', textContent: '모두 벗기',
+      onclick: () => {
+        me.worn = {};
+        store.set(KEY_ME, me);
+        handle.setMe(shown());
+        renderGifts();
+        say('원래 모습으로 돌아왔어.');
+      },
+    });
 
     function takeGift(actor, gid) {
       taken.add(`${slotNow()}:${actor.poolIndex}`);
@@ -326,27 +339,33 @@
     }
 
     function wear(id) {
-      me.worn = me.worn === id ? null : id;          // 한 번 더 누르면 벗는다
+      const slot = Cat.SLOT_OF[id];
+      const label = Cat.ACC_LABEL[id];
+      if (me.worn[slot] === id) delete me.worn[slot];   // 한 번 더 누르면 벗는다
+      else me.worn[slot] = id;                          // 같은 자리에 있던 건 자동으로 벗는다
       store.set(KEY_ME, me);
       handle.setMe(shown());
       renderGifts();
-      say(me.worn ? `착용: ${Cat.ACC_LABEL[id]}!` : '원래 모습으로 돌아왔어.');
+      say(me.worn[slot] ? `착용(${Cat.SLOT_LABEL[slot]}): ${label}!` : `벗었어: ${label}`);
     }
 
     function renderGifts() {
       giftTitle.textContent = `🎁 선물함 ${owned.size} / ${Cat.GIFT_IDS.length}`;
-      giftHint.textContent = owned.size
-        ? '눌러서 입혀 보세요. 입고 있는 걸 다시 누르면 벗어요.'
-        : '손님이 가끔 선물을 들고 와요. 머리 위의 🎁를 눌러 받아 보세요.';
+      const wearing = Cat.SLOTS.filter((s) => me.worn[s]).map((s) => `${Cat.SLOT_LABEL[s]} ${Cat.ACC_LABEL[me.worn[s]]}`);
+      giftHint.textContent = !owned.size
+        ? '손님이 가끔 선물을 들고 와요. 머리 위의 🎁를 눌러 받아 보세요.'
+        : (wearing.length ? `착용 중: ${wearing.join(' · ')}. ` : '') +
+          '머리·얼굴·목·등·손 자리마다 하나씩 같이 입을 수 있어요. 입고 있는 걸 다시 누르면 벗어요.';
+      undressBtn.disabled = !wearing.length;
       giftGrid.replaceChildren(...Cat.GIFT_IDS.map((id) => {
         const has = owned.has(id);
         const c = el('canvas', { width: Render.N, height: Render.N });
-        const preview = Object.assign({}, me, { accessory: id });
+        const preview = Object.assign({}, me, { accessories: [id] });   // 그 선물만 입은 모습
         Render.drawGrid(c.getContext('2d'), Render.framesOf(preview)[0], 1, 0, 0, false, has ? null : '#d9c8a8');
-        const worn = me.worn === id;
+        const worn = me.worn[Cat.SLOT_OF[id]] === id;
         const node = el('div', {
           className: 'slot' + (has ? ' got gift-slot' : '') + (worn ? ' worn' : ''),
-          title: has ? `${Cat.ACC_LABEL[id]}${worn ? ' (착용 중)' : ''}` : '???',
+          title: has ? `${Cat.ACC_LABEL[id]} · ${Cat.SLOT_LABEL[Cat.SLOT_OF[id]]}${worn ? ' (착용 중)' : ''}` : '???',
         }, [c, el('span', { textContent: has ? Cat.ACC_LABEL[id] + (worn ? ' ✓' : '') : '?' })]);
         if (has) node.onclick = () => wear(id);
         return node;
@@ -553,7 +572,7 @@
       },
     });
 
-    const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid]);
+    const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid, el('div', { className: 'row gift-actions' }, [undressBtn])]);
     show(canvas, snackBar, brag, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,

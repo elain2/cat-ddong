@@ -191,7 +191,8 @@
     mr(15, 10, 15, WHITE);
     mr(16, 10, 15, WHITE);
     mr(17, 11, 15, WHITE);
-    if (s === 2 || cat.accessory === 'tie' || cat.accessory === 'bottle') mr(14, 7, 8, BLUSH);
+    const accs = cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory];
+    if (s === 2 || accs.includes('tie') || accs.includes('bottle')) mr(14, 7, 8, BLUSH);
 
     // 눈: 대범할수록 크다. 느긋하면 반쯤 감겨 있다.
     const ew = b === 2 ? 3 : 2;
@@ -217,8 +218,10 @@
       sp(16, 14, 17, OUT);
     }
 
-    // 액세서리
-    const acc = cat.accessory;
+    // 액세서리: 등(망토) → 목 → 머리 → 얼굴 → 손 순서로 겹쳐 그린다
+    const ORDER = { cape: 0, pearl: 1, shell: 1, scarf: 1, bell: 1, tie: 2, blossom: 2, leaf: 2, crown: 2,
+      partyhat: 2, flowers: 2, ribbonpin: 2, headphones: 2, glasses: 3, shades: 3, bottle: 4 };
+    const drawAcc = (acc) => {
     if (acc === 'tie') {
       // 회식 끝난 아저씨처럼 넥타이를 머리에 감았다: 줄무늬 띠 + 왼쪽 매듭 + 늘어진 끝자락
       const TIE = '#4f7fd2', STRIPE = '#dfe9ff', KNOT = '#33539a';
@@ -332,6 +335,8 @@
       mr(19, 15, 15, '#f6c945');
       mr(20, 15, 15, '#f6c945');
     }
+    };
+    accs.slice().sort((a, b) => (ORDER[a] || 0) - (ORDER[b] || 0)).forEach(drawAcc);
 
     // 졸음 z
     if (e === 0 && f === 2) {
@@ -356,7 +361,7 @@
   const frameCache = new Map();
   function framesOf(cat) {
     const key = JSON.stringify([cat.energy, cat.social, cat.delicacy, cat.boldness, cat.fur,
-      cat.accessory, cat.seed, !!cat.chubby, cat.style]);
+      cat.accessory, (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style]);
     if (!frameCache.has(key)) frameCache.set(key, [0, 1, 2].map((f) => buildFrame(cat, f)));
     return frameCache.get(key);
   }

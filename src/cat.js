@@ -70,6 +70,43 @@
   // 자기가 하고 있는 걸 건네고, 아무것도 안 한 고양이는 아래 특별 선물 중 하나를 준다.
   const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell'];
   const GIFT_IDS = ['tie', 'glasses', 'bell', 'bottle', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);
+  // 착용 자리(슬롯): 슬롯마다 하나씩, 서로 다른 슬롯은 같이 착용할 수 있다.
+  const SLOTS = ['head', 'face', 'neck', 'back', 'hold'];
+  const SLOT_LABEL = { head: '머리', face: '얼굴', neck: '목', back: '등', hold: '손' };
+  const SLOT_OF = {
+    tie: 'head', blossom: 'head', leaf: 'head', crown: 'head', partyhat: 'head', flowers: 'head',
+    ribbonpin: 'head', headphones: 'head',
+    glasses: 'face', shades: 'face',
+    bell: 'neck', scarf: 'neck', pearl: 'neck', shell: 'neck',
+    cape: 'back',
+    bottle: 'hold',
+  };
+
+  // 저장된 worn(예전엔 문자열 하나)을 {슬롯: id}로 정리한다.
+  function normalizeWorn(w) {
+    const out = {};
+    if (typeof w === 'string' && SLOT_OF[w]) out[SLOT_OF[w]] = w;
+    else if (w && typeof w === 'object') {
+      SLOTS.forEach((s) => { if (typeof w[s] === 'string' && SLOT_OF[w[s]] === s) out[s] = w[s]; });
+    }
+    return out;
+  }
+
+  // 지금 입고 있는 모든 악세사리(슬롯 순서). 설문 악세사리는 같은 슬롯을 선물이 차지하면 밀려난다.
+  function outfitOf(cat) {
+    const bySlot = {};
+    const base = cat.accessory;
+    if (base && base !== 'none' && SLOT_OF[base]) bySlot[SLOT_OF[base]] = base;
+    const worn = normalizeWorn(cat.worn);
+    SLOTS.forEach((s) => { if (worn[s]) bySlot[s] = worn[s]; });
+    return SLOTS.map((s) => bySlot[s]).filter(Boolean);
+  }
+
+  // 그릴 때 쓰는 복사본: accessories에 입은 것 전체가 들어간다.
+  function dressed(cat) {
+    return Object.assign({}, cat, { accessories: outfitOf(cat) });
+  }
+
   const GIFT_RATE = 0.3;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
 
   // 시즌 한정 손님: 그 계절에만 놀러 온다. id는 100번부터, 계절마다 3마리.
@@ -261,7 +298,7 @@
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
       fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
       owner: cleanOwner(o.owner),
-      worn: GIFT_IDS.includes(o.worn) ? o.worn : null,
+      worn: normalizeWorn(o.worn),
     });
   }
 
@@ -272,12 +309,12 @@
       REASONS.delicacy[cat.delicacy],
       REASONS.boldness[cat.boldness],
       REASONS.fur[cat.fur],
-      REASONS.accessory[cat.accessory],
-    ];
+    ].concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
+      .map((a) => REASONS.accessory[a]).filter(Boolean));
   }
 
   root.Cat = {
-    buildCat, normalizeCat, cleanOwner, giftOf, GIFT_IDS, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
