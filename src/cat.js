@@ -35,6 +35,7 @@
       cream: '아침 햇살 같은 크림색이에요 → 하루의 시작을 좋아해요.',
       orange: '노을빛 오렌지색이에요 → 해질녘이 제일 좋아요.',
       black: '밤처럼 까만 털이에요 → 조용한 밤이 편해요.',
+      butler: '턱시도를 차려입었어요 → 언제나 단정한 사랑방의 집사예요.',
       gray: '새벽 같은 은회색이에요 → 고요한 시간을 사랑해요.',
     },
     accessory: {
@@ -49,6 +50,7 @@
       cape: '망토를 둘렀어요 → 사랑방을 지키는 영웅이에요.',
       headphones: '헤드폰을 썼어요 → 나만의 음악이 필요해요.',
       ribbonpin: '리본핀을 꽂았어요 → 작은 멋도 놓치지 않아요.',
+      bowtie: '나비넥타이를 맸어요 → 손님 맞을 준비는 늘 끝나 있어요.',
       beret: '베레모를 썼어요 → 오늘은 예술가가 되기로 했어요.',
       strawhat: '밀짚모자를 썼어요 → 소풍 갈 준비가 끝났어요.',
       santahat: '산타모자를 썼어요 → 누군가에게 선물을 주러 가요.',
@@ -73,9 +75,9 @@
     },
   };
 
-  const FUR_LABEL = { cream: '크림', orange: '오렌지', black: '검정', gray: '은회색' };
+  const FUR_LABEL = { cream: '크림', orange: '오렌지', black: '검정', gray: '은회색', butler: '턱시도' };
   const ACC_LABEL = {
-    bottle: '술병', tie: '넥타이', glasses: '안경', bell: '방울', none: '맨몸',
+    bowtie: '나비넥타이', bottle: '술병', tie: '넥타이', glasses: '안경', bell: '방울', none: '맨몸',
     blossom: '벚꽃', shades: '선글라스', leaf: '단풍잎', scarf: '목도리',
     crown: '왕관', partyhat: '고깔모자', flowers: '꽃관', cape: '망토', headphones: '헤드폰', ribbonpin: '리본핀',
     pearl: '진주 목걸이', shell: '조개 목걸이',
@@ -100,6 +102,7 @@
     ribbonpin: 'head', headphones: 'head', beret: 'head', strawhat: 'head', santahat: 'head',
     glasses: 'face', shades: 'face', monocle: 'face', heartglasses: 'face', sleepmask: 'face',
     bell: 'neck', scarf: 'neck', pearl: 'neck', shell: 'neck', bandana: 'neck', medal: 'neck', lei: 'neck',
+    bowtie: 'neck',
     cape: 'back', wings: 'back', butterfly: 'back', backpack: 'back',
     bottle: 'hold', fish: 'hold', balloon: 'hold', icecream: 'hold',
   };
@@ -177,6 +180,7 @@
 
   // picks[i] = QUESTIONS[i]에서 고른 option.value
   function buildCat(questions, picks, nickname) {
+    if (isZipsa(nickname)) return zipsaCat();
     const scores = { energy: [], social: [], delicacy: [], boldness: [] };
     let fur = 'cream';
     let accessory = 'none';
@@ -209,6 +213,7 @@
 
   function withSignature(cat) {
     if (!cat || typeof cat !== 'object') return cat;
+    if (cat.egg) return cat;                 // 집사 고양이는 그 자체가 디자인이다
     const r = rng(((cat.seed >>> 0) ^ 0x51ed270b) >>> 0);
     const mark = MARKS[Math.floor(r() * MARKS.length)];
     const eyeColor = EYE_COLORS[Math.floor(r() * EYE_COLORS.length)];
@@ -238,7 +243,20 @@
     const r = rng(cat.seed ^ 0x9e3779b9);
     cat.name = pick(r, NAME_HEAD) + pick(r, NAME_TAIL);
     cat.title = TITLES[cat.energy][cat.social];
+    if (cat.egg === 'zipsa') { cat.name = '집사'; cat.title = '사랑방의 집사 냥'; }
     return cat;
+  }
+
+  // 이스터에그: 이름에 'zipsa'를 넣으면 사랑방의 집사 고양이가 나온다.
+  // 별도 스프라이트 없이 일반 생성기로 만들어서 선물도 그대로 입힐 수 있다.
+  function isZipsa(v) {
+    return String(v == null ? '' : v).trim().toLowerCase() === 'zipsa';
+  }
+  function zipsaCat() {
+    return finish({
+      energy: 1, social: 2, delicacy: 2, boldness: 1,
+      fur: 'butler', accessory: 'bowtie', seed: 7, egg: 'zipsa', owner: '',
+    });
   }
 
   // 사랑방 손님: 시드만으로 고양이를 복원한다.
@@ -341,13 +359,14 @@
     if (!o || typeof o !== 'object') return null;
     const lv = (v) => Number.isInteger(v) && v >= 0 && v <= 2;
     if (![o.energy, o.social, o.delicacy, o.boldness].every(lv)) return null;
-    if (!['cream', 'orange', 'black', 'gray'].includes(o.fur)) return null;
-    if (!['none', 'tie', 'glasses', 'bell', 'bottle'].includes(o.accessory)) return null;
+    if (!['cream', 'orange', 'black', 'gray', 'butler'].includes(o.fur)) return null;
+    if (!['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie'].includes(o.accessory)) return null;
     if (!Number.isFinite(o.seed)) return null;
     return withSignature(finish({
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
       fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
       owner: cleanOwner(o.owner),
+      egg: o.egg === 'zipsa' ? 'zipsa' : undefined,
       worn: normalizeWorn(o.worn),
     }));
   }
@@ -365,7 +384,7 @@
   }
 
   root.Cat = {
-    buildCat, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };

@@ -12,6 +12,7 @@
     orange: { base: '#f2a64e', shade: '#d4802c', patch: '#fbe3b8' },
     black: { base: '#4a4a63', shade: '#33334a', patch: '#6c6c8a' },
     gray: { base: '#b7bcc8', shade: '#939aaa', patch: '#e8ebf2' },
+    butler: { base: '#3b3b52', shade: '#3b3b52', patch: '#555570' },   // 집사 턱시도
   };
 
   function newGrid() {
@@ -164,7 +165,7 @@
       for (let y = 24; y <= 28; y++) sp(y, tx, tx + 1, K);
       sp(23, tx - 1 + sway, tx + sway, K);
     }
-    sp(29, 31 - edge + 1, tx + 1, K);
+    sp(29, 31 - edge, tx + 1, K);    // 몸통 끝과 꼬리 사이 한 칸까지 이어 붙인다
     if (MC) {                                       // 호스트: 꼬리 끝을 물들인다
       if (e === 2 && !cat.chubby) { sp(9, tx + sway, tx + 1 + sway, MC); sp(10, tx + sway, tx + 1 + sway, MC); }
       else if (e === 1 || cat.chubby) { sp(18, tx - 1 + sway, tx - 1 + sway, MC); sp(19, tx - 1 + sway, tx + sway, MC); }
@@ -262,7 +263,7 @@
 
     // 액세서리: 등(망토) → 목 → 머리 → 얼굴 → 손 순서로 겹쳐 그린다
     const ORDER = { cape: 0, wings: 0, butterfly: 0, backpack: 0,
-      pearl: 1, shell: 1, scarf: 1, bell: 1, bandana: 1, medal: 1, lei: 1,
+      pearl: 1, shell: 1, scarf: 1, bell: 1, bandana: 1, medal: 1, lei: 1, bowtie: 1,
       tie: 2, blossom: 2, leaf: 2, crown: 2, partyhat: 2, flowers: 2, ribbonpin: 2, headphones: 2,
       beret: 2, strawhat: 2, santahat: 2,
       glasses: 3, shades: 3, monocle: 3, heartglasses: 3, sleepmask: 3,
@@ -331,6 +332,14 @@
       for (let y = 21; y <= 25; y++) {
         for (let x = 19; x <= 22; x++) pset(g, x, y, (y % 3 === 0) ? B : A);
       }
+    } else if (acc === 'bowtie') {
+      // 나비넥타이: 양끝은 넓고 가운데는 좁다
+      mr(18, 9, 11, RED);
+      mr(19, 9, 14, RED);
+      mr(20, 9, 14, RED);
+      mr(21, 9, 11, RED);
+      sp(19, 14, 17, '#b83a4a');
+      sp(20, 14, 17, '#b83a4a');
     } else if (acc === 'crown') {
       const G = '#f6c945';
       mr(8, 11, 15, G); mr(7, 11, 15, G);                       // 띠

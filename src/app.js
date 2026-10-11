@@ -105,7 +105,8 @@
   }
 
   function result(cat, real) {   // real: 선물 착용 전의 원본(저장 객체)
-    say(cat.owner ? `${cat.owner}, 새 친구가 왔어냥!` : '새 친구가 왔어냥!');
+    say(cat.egg ? '…어? 나랑 똑같이 생겼잖아냥! 이건 비밀이야.'
+      : (cat.owner ? `${cat.owner}, 새 친구가 왔어냥!` : '새 친구가 왔어냥!'));
     const canvas = el('canvas', { width: Render.N, height: Render.N, className: 'cat' });
 
     const tags = el('div', { className: 'tags' }, [
