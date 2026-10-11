@@ -119,6 +119,17 @@
       me,
       visitors,
       isCollected: (k) => met.has(k),
+      onReact(kind, a, b) {
+        const x = a.cat.name, y = b.cat.name;
+        const lines = {
+          heart: `${x} ♥ ${y}, 사이가 좋아 보여!`,
+          annoyed: `${x}: …혼자 있고 싶대.`,
+          note: `${x}, ${y} 둘 다 신났어!`,
+          zzz: `${x}: 꾸벅꾸벅…`,
+          dots: `${x} → ${y}: 가만히 쳐다봐…`,
+        };
+        say(lines[kind]);
+      },
       onPick(actor) {
         if (actor.isMe) {
           say(`내 고양이 ${me.name}! ${me.title}`);

@@ -117,12 +117,46 @@
     }
   }
 
+  // 고양이끼리 만났을 때 머리 위에 뜨는 말풍선 아이콘 (X가 칠해지는 칸)
+  const ICONS = {
+    heart: { rows: ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'], color: '#f0607a' },
+    annoyed: { rows: ['X...X', '.X.X.', '..X..', '.X.X.', 'X...X'], color: '#e04f5f' },
+    note: { rows: ['..XXX', '..X.X', '..X..', 'XXX..', 'XXX..'], color: '#6b5b95' },
+    dots: { rows: ['XX.XX.XX', 'XX.XX.XX'], color: '#2b2333' },
+    zzz: { rows: ['XXX', '..X', '.X.', 'XXX'], color: '#6b5b95' },
+  };
+  function drawIcon(ctx, icon, x, y) {
+    const cells = [];
+    icon.rows.forEach((row, j) => [...row].forEach((c, i) => { if (c === 'X') cells.push([x + i, y + j]); }));
+    ctx.fillStyle = OUT;
+    cells.forEach(([cx, cy]) => {
+      ctx.fillRect(cx - 1, cy, 3, 1);
+      ctx.fillRect(cx, cy - 1, 1, 3);
+    });
+    ctx.fillStyle = icon.color;
+    cells.forEach(([cx, cy]) => ctx.fillRect(cx, cy, 1, 1));
+  }
+
+  // a가 b 곁에 있을 때 a의 반응. 성격과 취향으로 정해진다.
+  const DRINKERS = ['tie', 'bottle'];
+  function reactionOf(a, b) {
+    const A = a.cat, B = b.cat;
+    if (DRINKERS.includes(A.accessory) && DRINKERS.includes(B.accessory)) return 'note'; // 건배
+    if (A.social === 0) return 'annoyed';
+    if (A.social === 2) return 'heart';
+    if (A.energy === 2 && B.energy === 2) return 'note';
+    if (A.energy === 0) return 'zzz';
+    return 'dots';
+  }
+
   function mount(canvas, opts) {
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     let season = opts.season || seasonOf(new Date());
     let actors = [];
     let raf = 0, last = performance.now();
+    let time = 0;          // 방 안에서 흐른 시간(초)
+    let lastMsg = -99;     // 마지막으로 말풍선 알림을 보낸 시간
 
     function bounds() { return { x0: 14, x1: W - 46, y0: FLOOR_Y + 36, y1: H - 6 }; }
     function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -134,6 +168,7 @@
         x: rnd(b.x0, b.x1), y: rnd(b.y0, b.y1),
         tx: null, ty: null, wait: rnd(0.5, 5), flip: Math.random() < 0.5,
         clock: rnd(0, 2000), seqI: 0,
+        emote: null, emoteCool: rnd(2, 6),
       }, extra);
     }
 
@@ -142,13 +177,46 @@
         .concat(visitors.map((k) => makeActor(Cat.poolCat(k), { poolIndex: k })));
     }
 
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function near(a, o) { return Math.abs(a.x - o.x) < 26 && Math.abs(a.y - o.y) < 10; }
+
+    function react(a, o) {
+      const kind = reactionOf(a, o);
+      a.emote = { kind, until: time + 2.4, t0: time };
+      a.emoteCool = rnd(7, 12);
+      if (kind === 'annoyed') {                      // 독립적인 고양이는 슬며시 자리를 뜬다
+        const b = bounds();
+        a.tx = clamp(a.x + (a.x >= o.x ? 1 : -1) * rnd(40, 70), b.x0, b.x1);
+        a.ty = clamp(a.y + rnd(-14, 14), b.y0, b.y1);
+      }
+      if (kind === 'heart' && !o.emote && o.cat.social === 2) {
+        o.emote = { kind: 'heart', until: time + 2.4, t0: time };   // 서로 좋아하면 같이 하트
+        o.emoteCool = rnd(7, 12);
+      }
+      if (opts.onReact && time - lastMsg > 6) {
+        lastMsg = time;
+        opts.onReact(kind, a, o);
+      }
+    }
+
     function update(dt) {
       const b = bounds();
+      time += dt;
       actors.forEach((a) => {
         a.clock += dt * 1000;
         if (a.tx === null) {
           a.wait -= dt;
-          if (a.wait <= 0) { a.tx = rnd(b.x0, b.x1); a.ty = rnd(b.y0, b.y1); }
+          if (a.wait <= 0) {
+            const others = actors.filter((o) => o !== a);
+            if (a.cat.social === 2 && others.length && Math.random() < 0.6) {
+              // 친화적인 고양이는 다른 고양이 곁으로 간다
+              const o = others[Math.floor(Math.random() * others.length)];
+              a.tx = clamp(o.x + (Math.random() < 0.5 ? -20 : 20), b.x0, b.x1);
+              a.ty = clamp(o.y + rnd(-4, 4), b.y0, b.y1);
+            } else {
+              a.tx = rnd(b.x0, b.x1); a.ty = rnd(b.y0, b.y1);
+            }
+          }
           return;
         }
         const dx = a.tx - a.x, dy = a.ty - a.y;
@@ -158,6 +226,15 @@
         a.x += (dx / dist) * speed * dt;
         a.y += (dy / dist) * speed * dt;
         if (Math.abs(dx) > 1) a.flip = dx < 0;
+      });
+
+      // 가까이 있는 고양이끼리 반응
+      actors.forEach((a) => {
+        a.emoteCool -= dt;
+        if (a.emote && time > a.emote.until) a.emote = null;
+        if (a.emote || a.emoteCool > 0) return;
+        const o = actors.find((c) => c !== a && near(a, c));
+        if (o) react(a, o);
       });
     }
 
@@ -185,12 +262,28 @@
       }
     }
 
+    function emoteIcon(a) {
+      const e = a.emote;
+      const p = (time - e.t0) / (e.until - e.t0);           // 0 → 1
+      if (p > 0.8 && Math.floor(time * 8) % 2) return;       // 끝날 때 깜빡
+      const x = Math.round(a.x) + 12, y = Math.round(a.y) - 44 - Math.round(p * 6);
+      if (e.kind === 'zzz') {
+        [[0, 0, 0.0], [5, -5, 0.25], [10, -10, 0.5]].forEach(([dx, dy, from]) => {
+          if (p >= from) drawIcon(ctx, ICONS.zzz, x + dx, y + dy + 4);
+        });
+      } else {
+        drawIcon(ctx, ICONS[e.kind], x, y);
+      }
+    }
+
     function draw(t) {
       ctx.drawImage(background(season), 0, 0);
       drawParticles(ctx, season, t);
       actors.slice().sort((a, b) => a.y - b.y).forEach((a) => {
-        Render.drawGrid(ctx, frameOf(a), 1, Math.round(a.x), Math.round(a.y) - 31, a.flip);
-        marker(a, t);
+        // 신난 고양이는 콩콩 뛴다
+        const hop = a.emote && a.emote.kind === 'note' ? Math.round(Math.abs(Math.sin(time * 9)) * 3) : 0;
+        Render.drawGrid(ctx, frameOf(a), 1, Math.round(a.x), Math.round(a.y) - 31 - hop, a.flip);
+        if (a.emote) emoteIcon(a); else marker(a, t);
       });
     }
 
