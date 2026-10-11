@@ -13,6 +13,7 @@
   const KEY_SNACK = 'cat-ddong.snack';
   const SNACK_MS = 30 * 60 * 1000;   // 간식 효과 시간 (손님 교체 주기와 같다)
   const SNACK_MAX = 10;
+  const SNACK_CAP_MS = 2 * 60 * 60 * 1000;   // 연장해도 남은 시간은 최대 2시간
   const KEY_LOG = 'cat-ddong.log';   // 손님별 방문 기록 {id: {n, first, last, prev, slot}}
   const SLOT_MS = 30 * 60 * 1000;
   const BACKUP_PREFIX = 'CATDDONG1:';
@@ -314,10 +315,14 @@
     function renderSnack() {
       const left = snack.until - Date.now();
       if (left > 0) {
-        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-        snackInfo.textContent = `🐟 간식이 놓여 있어요 · ${m}:${String(s).padStart(2, '0')}`;
-        snackBtn.textContent = '간식 먹는 중';
-        snackBtn.disabled = true;
+        const h = Math.floor(left / 3600000);
+        const m = Math.floor((left % 3600000) / 60000), s = Math.floor((left % 60000) / 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        const clock = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+        snackInfo.textContent = `🐟 ${snack.count}개 · 먹는 중 ${clock}`;
+        const full = left + SNACK_MS > SNACK_CAP_MS;
+        snackBtn.textContent = full ? '가득 놓여 있어요' : '간식 더 놓기 (+30분)';
+        snackBtn.disabled = full || snack.count <= 0;
       } else {
         snackInfo.textContent = `🐟 간식 ${snack.count}개`;
         snackBtn.textContent = '간식 놓기';
@@ -336,13 +341,18 @@
     }
 
     function useSnack() {
-      if (snackOn() || snack.count <= 0) return;
+      if (snack.count <= 0) return;
+      const left = Math.max(0, snack.until - Date.now());
+      if (left + SNACK_MS > SNACK_CAP_MS) return;      // 이미 가득
+      const extending = left > 0;
       snack.count -= 1;
-      snack.until = Date.now() + SNACK_MS;
+      snack.until = Math.max(Date.now(), snack.until) + SNACK_MS;   // 남은 시간에 이어 붙인다
       saveSnack();
       syncVisitors();
       renderSnack();
-      say('밥그릇에 간식을 놓았어! 손님이 더 올 거야. (한정 손님 확률도 올라가요)');
+      say(extending
+        ? '간식을 더 놓았어! 30분 더 오래 머물러 줄 거야.'
+        : '밥그릇에 간식을 놓았어! 손님이 더 올 거야. (한정 손님 확률도 올라가요)');
     }
 
     renderSnack();
