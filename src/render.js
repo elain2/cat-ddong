@@ -559,10 +559,11 @@
   }
 
   // 움직이는 모습을 GIF로 (눈 깜빡임, 꼬리 흔들림). 색이 너무 많으면 null.
-  function toGifBlob(cat) {
+  function toGifBlob(cat, opts) {
+    const transparent = !!(opts && opts.transparent);
     const frames = framesOf(cat);
     const seq = sequenceOf(cat).map(([f, ms]) => ({ grid: frames[f], delay: ms }));
-    const bytes = root.Gif.encode(seq, 8, '#fff3e0');
+    const bytes = root.Gif.encode(seq, 8, '#fff3e0', transparent);
     return bytes ? new Blob([bytes], { type: 'image/gif' }) : null;
   }
 

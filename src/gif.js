@@ -50,7 +50,7 @@
 
   // frames: [{ grid(32x32 색 문자열|null), delay(ms) }], scale: 확대 배율, bg: 배경색(hex)
   // 반환: Uint8Array. 색이 256개를 넘으면 null.
-  function encode(frames, scale, bg) {
+  function encode(frames, scale, bg, transparent) {
     const n = frames[0].grid.length;
     const size = n * scale;
 
@@ -85,7 +85,7 @@
 
     for (const f of frames) {
       // 그래픽 제어: 이전 프레임을 배경으로 지우고(disposal 2) 다음 프레임을 그린다
-      bytes.push(0x21, 0xf9, 0x04, 0x08);
+      bytes.push(0x21, 0xf9, 0x04, transparent ? 0x09 : 0x08);   // 0번 색을 투명으로 쓸지
       w16(Math.max(2, Math.round(f.delay / 10)));
       bytes.push(0x00, 0x00);
 
