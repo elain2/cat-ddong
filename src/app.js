@@ -602,7 +602,7 @@
       photoBtn.disabled = true;
       try {
         if (document.fonts && document.fonts.load) await document.fonts.load('28px Galmuri11');
-        const COLS = 10, CELL = 76, CELLH = 92, PAD = 24;   // 칸: 가로 76, 세로 92 (고양이 64 + 이름 자리)
+        const COLS = 10, CELL = 76, CELLH = 84, PAD = 24;   // 칸: 가로 76, 세로 84 (고양이 + 이름이 딱 맞게)
         const W = COLS * CELL + PAD * 2;
         const normalIds = Array.from({ length: Cat.POOL_SIZE }, (_, k) => k);
         const limitedIds = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
@@ -654,7 +654,7 @@
             Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy - 2, false, got ? null : '#d9c8a8');
             x.textAlign = 'center';
             x.fillStyle = got ? INK : '#c4b08a'; x.font = FONT(13);
-            x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELLH - 14);
+            x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELLH - 9);   // 이름은 칸 아래쪽에 붙인다
           });
           return top + rows(ids.length) * CELLH;
         };
