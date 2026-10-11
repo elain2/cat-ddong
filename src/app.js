@@ -597,6 +597,85 @@
       cleanup = () => stage.stop();
     }
 
+    // 도감 사진: 모은 고양이와 아직 못 만난 실루엣을 한 장에 담아 PNG로 저장한다
+    async function savePhoto() {
+      photoBtn.disabled = true;
+      try {
+        if (document.fonts && document.fonts.load) await document.fonts.load('28px Galmuri11');
+        const COLS = 10, CELL = 76, PAD = 24;
+        const W = COLS * CELL + PAD * 2;
+        const normalIds = Array.from({ length: Cat.POOL_SIZE }, (_, k) => k);
+        const limitedIds = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
+        const rows = (n) => Math.ceil(n / COLS);
+        const HEAD = 150, SEC = 44, FOOT = 56;
+        const H = HEAD + SEC + rows(normalIds.length) * CELL + SEC + rows(limitedIds.length) * CELL + FOOT + 12;
+
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const x = c.getContext('2d');
+        x.imageSmoothingEnabled = false;
+        const FONT = (px) => `${px}px Galmuri11, "Apple SD Gothic Neo", sans-serif`;
+        const INK = '#2b2333';
+
+        // 배경 + 점무늬
+        x.fillStyle = '#fff3e0'; x.fillRect(0, 0, W, H);
+        x.fillStyle = '#f0dcc0';
+        for (let yy = 10; yy < H; yy += 16) for (let xx = 10; xx < W; xx += 16) x.fillRect(xx, yy, 2, 2);
+        x.strokeStyle = INK; x.lineWidth = 6; x.strokeRect(3, 3, W - 6, H - 6);
+
+        // 머리말: 내 고양이와 도감 수
+        const n = countMet();
+        const meCat = shown();
+        Render.drawGrid(x, Render.framesOf(meCat)[0], 3, PAD, 22);
+        x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+        x.fillStyle = INK; x.font = FONT(32);
+        x.fillText(`${me.name}의 고양이 도감`, PAD + 112, 66);
+        x.fillStyle = '#b8662a'; x.font = FONT(18);
+        x.fillText(`도감 ${n.normal} / ${Cat.POOL_SIZE}   ✨ 시즌 한정 ${n.limited} / ${Cat.LIMITED_COUNT}`, PAD + 112, 100);
+        x.fillStyle = '#a89878'; x.font = FONT(14);
+        const total = Object.values(log).reduce((s, e) => s + e.n, 0);
+        x.fillText(`손님이 ${total}번 다녀갔어요`, PAD + 112, 126);
+
+        // 칸 그리기
+        const drawSection = (title, ids, y0) => {
+          x.fillStyle = INK; x.font = FONT(20); x.textAlign = 'left';
+          x.fillText(title, PAD, y0 + 28);
+          const top = y0 + SEC;
+          ids.forEach((id, i) => {
+            const cx = PAD + (i % COLS) * CELL;
+            const cy = top + Math.floor(i / COLS) * CELL;
+            const cat = Cat.catById(id);
+            const got = met.has(id);
+            x.fillStyle = got ? '#fffaf0' : '#f6ead2';
+            x.fillRect(cx + 3, cy + 3, CELL - 6, CELL - 6);
+            x.strokeStyle = got ? INK : '#d9c8a8'; x.lineWidth = 2;
+            x.strokeRect(cx + 3, cy + 3, CELL - 6, CELL - 6);
+            Render.drawGrid(x, Render.framesOf(cat)[0], 2, cx + (CELL - 64) / 2, cy + 2, false, got ? null : '#d9c8a8');
+            x.textAlign = 'center';
+            x.fillStyle = got ? INK : '#c4b08a'; x.font = FONT(12);
+            x.fillText(got ? cat.name : '?', cx + CELL / 2, cy + CELL - 6);
+          });
+          return top + rows(ids.length) * CELL;
+        };
+        let y = HEAD;
+        y = drawSection(`도감 ${n.normal}/${Cat.POOL_SIZE}`, normalIds, y);
+        y = drawSection(`✨ 시즌 한정 ${n.limited}/${Cat.LIMITED_COUNT}`, limitedIds, y + 8);
+
+        // 꼬리말
+        x.textAlign = 'center'; x.fillStyle = INK; x.font = FONT(16);
+        x.fillText('고양이 사랑방 · elain2.github.io/cat-ddong', W / 2, H - 24);
+
+        const blob = await new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+        const a = el('a', { href: URL.createObjectURL(blob), download: `${me.name}-도감.png` });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        say('도감 사진을 저장했어! 자랑해 봐.');
+      } finally {
+        photoBtn.disabled = false;
+      }
+    }
+    const photoBtn = el('button', { className: 'btn ghost snack-btn', textContent: '📸 도감 사진 저장', onclick: savePhoto });
+
     const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
     const mine = el('button', { className: 'btn ghost', textContent: '내 모습 보기', onclick: () => result(shown(), me) });
     const again = el('button', {
@@ -616,7 +695,7 @@
     });
 
     const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid, el('div', { className: 'row gift-actions' }, [undressBtn])]);
-    show(canvas, snackBar, brag, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
+    show(canvas, snackBar, brag, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, el('div', { className: 'row gift-actions' }, [photoBtn]), grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
       el('div', { className: 'row' }, [mine, rename, again]));
