@@ -93,7 +93,7 @@
   const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell',
     'beret', 'strawhat', 'santahat', 'monocle', 'heartglasses', 'sleepmask',
     'bandana', 'medal', 'lei', 'wings', 'butterfly', 'backpack', 'fish', 'balloon', 'icecream'];
-  const GIFT_IDS = ['tie', 'glasses', 'bell', 'bottle', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);
+  const GIFT_IDS = ['tie', 'glasses', 'bell', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);   // 술병은 선물에서 제외
   // 착용 자리(슬롯): 슬롯마다 하나씩, 서로 다른 슬롯은 같이 착용할 수 있다.
   const SLOTS = ['head', 'face', 'neck', 'back', 'hold'];
   const SLOT_LABEL = { head: '머리', face: '얼굴', neck: '목', back: '등', hold: '손' };
@@ -110,9 +110,11 @@
   // 저장된 worn(예전엔 문자열 하나)을 {슬롯: id}로 정리한다.
   function normalizeWorn(w) {
     const out = {};
-    if (typeof w === 'string' && SLOT_OF[w]) out[SLOT_OF[w]] = w;
+    if (typeof w === 'string' && SLOT_OF[w] && GIFT_IDS.includes(w)) out[SLOT_OF[w]] = w;
     else if (w && typeof w === 'object') {
-      SLOTS.forEach((s) => { if (typeof w[s] === 'string' && SLOT_OF[w[s]] === s) out[s] = w[s]; });
+      SLOTS.forEach((s) => {
+        if (typeof w[s] === 'string' && SLOT_OF[w[s]] === s && GIFT_IDS.includes(w[s])) out[s] = w[s];
+      });
     }
     return out;
   }
