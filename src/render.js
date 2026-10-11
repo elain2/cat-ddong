@@ -244,6 +244,32 @@
       for (let y = 23; y <= 25; y++) sp(y, 18, 21, WHITE);   // 라벨
       sp(24, 19, 20, RED);                                   // 라벨 무늬
       sp(22, 18, 18, '#8ad4a0');                             // 유리 하이라이트
+    } else if (acc === 'blossom') {
+      // 오른쪽 머리에 꽂은 벚꽃
+      [[21, 7], [23, 7], [21, 9], [23, 9]].forEach(([x, y]) => pset(g, x, y, '#fbd3dc'));
+      [[22, 7], [21, 8], [23, 8], [22, 9]].forEach(([x, y]) => pset(g, x, y, '#f06a9a'));
+      pset(g, 22, 8, '#ffe45c');
+    } else if (acc === 'shades') {
+      // 선글라스: 두 렌즈와 브릿지
+      mr(11, 8, 13, OUT);
+      mr(12, 8, 13, OUT);
+      mr(13, 9, 12, OUT);
+      sp(11, 14, 17, OUT);
+      pset(g, 9, 11, '#7fd0ff'); pset(g, 22, 11, '#7fd0ff');
+    } else if (acc === 'leaf') {
+      // 머리 위에 얹은 단풍잎
+      [[15, 5], [16, 5], [14, 6], [15, 6], [16, 6], [17, 6], [15, 7], [16, 7]].forEach(([x, y]) => pset(g, x, y, '#d2554f'));
+      pset(g, 14, 5, '#e8892a'); pset(g, 17, 5, '#e8892a');
+      pset(g, 15, 8, '#8a4b2a');
+    } else if (acc === 'scarf') {
+      // 목도리: 목을 두르고 한쪽이 늘어진다
+      const A = '#c8414f', B = '#fff0d8';
+      for (let y = 18; y <= 20; y++) {
+        for (let x = 8; x <= 23; x++) pset(g, x, y, (x % 4 < 1) ? B : A);
+      }
+      for (let y = 21; y <= 25; y++) {
+        for (let x = 19; x <= 22; x++) pset(g, x, y, (y % 3 === 0) ? B : A);
+      }
     } else if (acc === 'bell') {
       mr(18, 11, 14, RED);
       sp(18, 15, 16, RED);

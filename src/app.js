@@ -114,7 +114,15 @@
     say('사랑방에 온 걸 환영해냥! 놀러 온 고양이를 눌러서 만나봐.');
 
     const canvas = el('canvas', { className: 'room' });
-    const visitors = Cat.visitorsFor(Date.now(), 4);
+    const nowSeason = Cat.seasonOf(new Date());
+    const visitors = Cat.visitorsFor(Date.now(), 4, nowSeason);
+    const countMet = () => {
+      const ids = [...met];
+      return {
+        normal: ids.filter((k) => k < Cat.LIMITED_BASE).length,
+        limited: ids.filter((k) => k >= Cat.LIMITED_BASE).length,
+      };
+    };
     const handle = Room.mount(canvas, {
       me,
       visitors,
@@ -137,11 +145,14 @@
         }
         const c = actor.cat;
         if (met.has(actor.poolIndex)) {
-          say(`${c.name}가 또 놀러 왔어. ${c.title}`);
+          say(`${c.name}: ${c.title}. 또 놀러 왔구나!`);
         } else {
           met.add(actor.poolIndex);
           store.set(KEY_MET, [...met]);
-          say(`${c.name}(${c.title})를 처음 만났어! 도감 ${met.size}/${Cat.POOL_SIZE}`);
+          const n = countMet();
+          say(c.limited
+            ? `✨ ${Cat.SEASON_NAME[c.season]} 한정 손님 ${c.name}(${c.title})! 한정 도감 ${n.limited}/${Cat.LIMITED_COUNT}`
+            : `${c.name}(${c.title})를 처음 만났어! 도감 ${n.normal}/${Cat.POOL_SIZE}`);
           renderBook();
         }
       },
@@ -160,20 +171,30 @@
 
     const bookTitle = el('h3', { className: 'book-title' });
     const grid = el('div', { className: 'book' });
+    const limitedTitle = el('h3', { className: 'book-title' });
+    const limitedHint = el('p', { className: 'book-hint' });
+    const limitedGrid = el('div', { className: 'book' });
+
+    function slot(id, hintText) {
+      const cat = Cat.catById(id);
+      const got = met.has(id);
+      const c = el('canvas', { width: Render.N, height: Render.N });
+      Render.drawGrid(c.getContext('2d'), Render.framesOf(cat)[0], 1, 0, 0, false, got ? null : '#d9c8a8');
+      return el('div', { className: 'slot' + (got ? ' got' : ''), title: got ? cat.name : '???' }, [
+        c,
+        el('span', { textContent: got ? cat.name : hintText }),
+      ]);
+    }
+
     function renderBook() {
-      bookTitle.textContent = `도감 ${met.size} / ${Cat.POOL_SIZE}`;
-      const nodes = [];
-      for (let k = 0; k < Cat.POOL_SIZE; k++) {
-        const c = el('canvas', { width: Render.N, height: Render.N });
-        const cat = Cat.poolCat(k);
-        const got = met.has(k);
-        Render.drawGrid(c.getContext('2d'), Render.framesOf(cat)[0], 1, 0, 0, false, got ? null : '#d9c8a8');
-        nodes.push(el('div', { className: 'slot' + (got ? ' got' : ''), title: got ? cat.name : '???' }, [
-          c,
-          el('span', { textContent: got ? cat.name : '?' }),
-        ]));
-      }
-      grid.replaceChildren(...nodes);
+      const n = countMet();
+      bookTitle.textContent = `도감 ${n.normal} / ${Cat.POOL_SIZE}`;
+      grid.replaceChildren(...Array.from({ length: Cat.POOL_SIZE }, (_, k) => slot(k, '?')));
+
+      limitedTitle.textContent = `✨ 시즌 한정 ${n.limited} / ${Cat.LIMITED_COUNT}`;
+      limitedHint.textContent = `지금은 ${Cat.SEASON_NAME[nowSeason]}이에요. 이 계절의 한정 손님이 가끔 놀러 와요. (머리 위에 ★)`;
+      const ids = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
+      limitedGrid.replaceChildren(...ids.map((id) => slot(id, Cat.SEASON_NAME[Cat.catById(id).season])));
     }
     renderBook();
 
@@ -184,6 +205,7 @@
     });
 
     show(canvas, seasonRow, el('div', { className: 'card' }, [bookTitle, grid]),
+      el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       el('div', { className: 'row' }, [mine, again]));
     cleanup = () => handle.stop();
   }

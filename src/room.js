@@ -124,6 +124,7 @@
     note: { rows: ['..XXX', '..X.X', '..X..', 'XXX..', 'XXX..'], color: '#6b5b95' },
     dots: { rows: ['XX.XX.XX', 'XX.XX.XX'], color: '#2b2333' },
     zzz: { rows: ['XXX', '..X', '.X.', 'XXX'], color: '#6b5b95' },
+    star: { rows: ['..X..', '..X..', 'XXXXX', '.XXX.', '.X.X.'], color: '#ffd84a' },
   };
   function drawIcon(ctx, icon, x, y) {
     const cells = [];
@@ -174,7 +175,7 @@
 
     function setCats(me, visitors) {
       actors = [makeActor(me, { isMe: true })]
-        .concat(visitors.map((k) => makeActor(Cat.poolCat(k), { poolIndex: k })));
+        .concat(visitors.map((k) => makeActor(Cat.catById(k), { poolIndex: k })));
     }
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -253,6 +254,9 @@
         ctx.fillStyle = '#f0607a';
         ctx.fillRect(x - 2, y, 2, 2); ctx.fillRect(x + 2, y, 2, 2);
         ctx.fillRect(x - 3, y + 2, 8, 2); ctx.fillRect(x - 1, y + 4, 4, 2); ctx.fillRect(x, y + 6, 2, 1);
+      } else if (a.cat.limited && !opts.isCollected(a.poolIndex)) {
+        // 시즌 한정 손님은 별이 반짝인다
+        if (Math.floor(t / 300) % 4 !== 3) drawIcon(ctx, ICONS.star, x - 2, y - 1);
       } else if (!opts.isCollected(a.poolIndex)) {
         ctx.fillStyle = OUT;
         ctx.fillRect(x - 1, y - 1, 4, 9);
