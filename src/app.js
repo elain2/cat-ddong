@@ -450,10 +450,9 @@
       onclick: () => { store.remove(KEY_ME); intro(); },
     });
 
-    show(canvas, snackBar, seasonRow, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
+    show(canvas, snackBar, brag, seasonRow, el('div', { className: 'card' }, [bookTitle, bookHint, grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
-      brag,
       el('div', { className: 'row' }, [mine, again]));
     cleanup = () => { handle.stop(); clearInterval(timer); };
   }
