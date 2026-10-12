@@ -460,7 +460,8 @@
       }
 
       // 가구와 고양이를 아래쪽(발) 기준으로 섞어 그린다. 가구에 올라앉은 고양이는 가구 앞에 온다.
-      const drawables = actors.map((a) => ({ a, d: (a.held ? 1000 : 0) + depthOf(a) }))
+      // 인테리어를 편집하는 동안은 고양이를 숨겨서 가구가 가려지거나 걸리적거리지 않게 한다.
+      const drawables = (editMode ? [] : actors).map((a) => ({ a, d: (a.held ? 1000 : 0) + depthOf(a) }))
         .concat(items.map((it) => ({ it, d: it.y })));
       drawables.sort((p, q) => p.d - q.d).forEach((o) => {
         if (o.it) {
@@ -512,6 +513,7 @@
       return { px: ((ev.clientX - r.left) / r.width) * W, py: ((ev.clientY - r.top) / r.height) * H };
     }
     function hitTest(px, py) {
+      if (editMode) return null;
       return actors.slice().sort((a, b) => b.y - a.y).find((a) =>
         px >= a.x + 6 && px <= a.x + 26 && py >= a.y - 30 && py <= a.y + 1);
     }
@@ -536,7 +538,8 @@
     function hitItem(px, py) {
       return items.slice().sort((a, b) => b.y - a.y).find((it) => {
         const def = Interior.byId(Interior.ITEMS, it.id);
-        return px >= it.x - def.w / 2 - 2 && px <= it.x + def.w / 2 + 2 && py >= it.y - def.h - 2 && py <= it.y + 2;
+        const m = 5;   // 작은 소품도 손가락/마우스로 잡기 쉽게 여유를 둔다
+        return px >= it.x - def.w / 2 - m && px <= it.x + def.w / 2 + m && py >= it.y - def.h - m && py <= it.y + m;
       });
     }
     // 가구를 옮기면 그 위에 앉은 고양이도 같이 간다
@@ -689,7 +692,12 @@
       setVisitors,
       setMe,
       setDeco(d) { deco = Object.assign({ wall: 'default', floor: 'wood', rug: 'default' }, d || {}); },
-      setEditMode(on) { editMode = !!on; if (!on) selected = null; },
+      setEditMode(on) {
+        editMode = !!on;
+        if (!editMode) selected = null;
+        if (drag && drag.a) { drag.a.held = false; }   // 고양이를 들고 있던 중이면 놓는다
+        drag = null;
+      },
       addItem,
       removeItem,
       getItems() { return items.map((i) => Object.assign({}, i)); },
