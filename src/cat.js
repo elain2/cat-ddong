@@ -378,7 +378,7 @@
     const lv = (v) => Number.isInteger(v) && v >= 0 && v <= 2;
     if (![o.energy, o.social, o.delicacy, o.boldness].every(lv)) return null;
     if (!['cream', 'orange', 'black', 'gray', 'honey', 'blue', 'white', 'brown', 'butler'].includes(o.fur)) return null;
-    if (!['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie'].includes(o.accessory)) return null;
+    if (!['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie', 'beret', 'strawhat', 'headphones', 'partyhat'].includes(o.accessory)) return null;
     if (!Number.isFinite(o.seed)) return null;
     return withSignature(finish({
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
