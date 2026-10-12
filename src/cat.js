@@ -42,6 +42,26 @@
       butler: '턱시도를 차려입었어요 → 언제나 단정한 사랑방의 집사예요.',
       gray: '새벽 같은 은회색이에요 → 고요한 시간을 사랑해요.',
     },
+    look: {
+      ear: {
+        round: '귀가 동글동글해요 → 맞장구를 잘 쳐 줘요.',
+        fold: '귀가 접혀 있어요 → 한 귀로 듣고 한 귀로 흘려요.',
+        big: '귀가 커다래요 → 리액션이 아주 커요.',
+      },
+      tail: {
+        bob: '꼬리가 몽땅해요 → 좋아도 속으로만 좋아해요.',
+        long: '꼬리가 길어요 → 기분이 온몸에 다 드러나요.',
+        fluffy: '꼬리가 풍성해요 → 기분이 좋으면 온몸이 부풀어요.',
+      },
+      build: {
+        slim: '날씬한 편이에요 → 소식하고 가벼워요.',
+        chubby: '통통해요 → 먹는 즐거움을 아는 고양이예요.',
+      },
+      coat: {
+        tuft: '볼 털이 살짝 뻗쳤어요 → 꾸미지 않아도 매력이 있어요.',
+        fluffy: '털이 폭신폭신해요 → 어디서든 포근한 인상이에요.',
+      },
+    },
     pattern: {
       plain: '무늬 없이 깔끔해요 → 담백하고 단정한 매력이에요.',
       tabby: '줄무늬가 있어요 → 개성이 뚜렷하고 존재감이 있어요.',
@@ -210,6 +230,11 @@
   const ACCESSORY_IDS = ['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie', 'beret', 'strawhat',
     'headphones', 'partyhat', 'scarf'];
   const PATTERNS = ['plain', 'tabby', 'spots', 'point'];
+  // 외형 축(설문으로 정하며 악세사리와 무관): 귀 모양, 꼬리, 체형, 털 결
+  const EARS = ['pointy', 'round', 'fold', 'big'];
+  const TAILS = ['normal', 'bob', 'long', 'fluffy'];
+  const BUILDS = ['slim', 'normal', 'chubby'];
+  const COATS = ['smooth', 'tuft', 'fluffy'];
   const PATTERN_PREFIX = { tabby: '줄무늬 ', spots: '점박이 ', point: '포인트 ' };
 
   function buildCat(questions, picks, nickname) {
@@ -219,6 +244,7 @@
     let accessory = 'none';
     let accessory2 = 'none';
     let pattern = 'plain';
+    let ear = 'pointy', tail = 'normal', build = 'normal', coat = 'smooth';
     let tone = null;
     let family = 'warm';
     questions.forEach((q, i) => {
@@ -228,6 +254,10 @@
       else if (q.trait === 'accessory') accessory = picks[i];
       else if (q.trait === 'accessory2') accessory2 = picks[i];
       else if (q.trait === 'pattern') pattern = picks[i];
+      else if (q.trait === 'ear') ear = picks[i];
+      else if (q.trait === 'tail') tail = picks[i];
+      else if (q.trait === 'build') build = picks[i];
+      else if (q.trait === 'coat') coat = picks[i];
       else scores[q.trait].push(picks[i]);
     });
 
@@ -245,6 +275,10 @@
     cat.seed = hashStr(JSON.stringify([cat, (nickname || '').trim()]));
     cat.owner = cleanOwner(nickname);   // 시드 계산 뒤에 붙인다 (생김새에 영향 없음)
     cat.accessory2 = ACCESSORY_IDS.includes(accessory2) ? accessory2 : 'none';   // 시드 뒤에 붙인다
+    cat.ear = EARS.includes(ear) ? ear : 'pointy';
+    cat.tail = TAILS.includes(tail) ? tail : 'normal';
+    cat.build = BUILDS.includes(build) ? build : 'normal';
+    cat.coat = COATS.includes(coat) ? coat : 'smooth';
     cat.pattern = PATTERNS.includes(pattern) ? pattern : 'plain';   // 시드 뒤에 붙여 같은 답의 기존 고양이는 그대로 나온다
     return withSignature(finish(cat));
   }
@@ -314,7 +348,7 @@
   // 사랑방 손님: 시드만으로 고양이를 복원한다.
   function fromSeed(seed) {
     const r = rng(seed);
-    return finish({
+    const base = {
       energy: Math.floor(r() * 3),
       social: Math.floor(r() * 3),
       delicacy: Math.floor(r() * 3),
@@ -323,7 +357,12 @@
       accessory: pick(r, ['none', 'none', 'tie', 'glasses', 'bell', 'bottle']),
       chubby: r() < 0.15,
       seed,
-    });
+    };
+    // 새 외형 축: 기존 속성의 난수 순서를 건드리지 않도록 마지막에 뽑는다
+    base.ear = pick(r, ['pointy', 'pointy', 'round', 'fold', 'big']);
+    base.tail = pick(r, ['normal', 'normal', 'bob', 'long', 'fluffy']);
+    base.coat = pick(r, ['smooth', 'smooth', 'tuft', 'fluffy']);
+    return finish(base);
   }
 
   // 도감: 만날 수 있는 고양이는 POOL_SIZE마리로 정해져 있다.
@@ -425,6 +464,10 @@
       egg: o.egg === 'zipsa' ? 'zipsa' : undefined,
       worn: normalizeWorn(o.worn),
       pattern: PATTERNS.includes(o.pattern) ? o.pattern : 'plain',
+      ear: EARS.includes(o.ear) ? o.ear : 'pointy',
+      tail: TAILS.includes(o.tail) ? o.tail : 'normal',
+      build: BUILDS.includes(o.build) ? o.build : 'normal',
+      coat: COATS.includes(o.coat) ? o.coat : 'smooth',
     }));
   }
 
@@ -436,7 +479,7 @@
       REASONS.boldness[cat.boldness],
       REASONS.fur[cat.fur],
       REASONS.pattern[cat.pattern || 'plain'],
-    ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈, 꼬리 끝과 양말 색 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
+    ].concat(['ear', 'tail', 'build', 'coat'].map((k) => (REASONS.look[k] || {})[cat[k]]).filter(Boolean)).concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈, 꼬리 끝과 양말 색 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
     .concat(accessoryList(cat).map((a) => REASONS.accessory[a]).filter(Boolean));
   }
 

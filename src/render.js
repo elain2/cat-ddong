@@ -150,7 +150,8 @@
     const sp = (y, x0, x1, c) => hspan(g, y, x0, x1, c);
     const mr = (y, x0, x1, c) => hmirror(g, y, x0, x1, c);
 
-    const edge = cat.chubby ? 3 : [4, 5, 6][e];   // 엉덩이 왼쪽 끝: 작을수록 통통
+    const chub = !!cat.chubby || cat.build === 'chubby';                           // 통통
+    const edge = chub ? 3 : [4, 5, 6][e] + (cat.build === 'slim' ? 1 : 0);        // 엉덩이 왼쪽 끝: 작을수록 통통
     const sway = f === 1 ? 1 : 0;
     const tx = 31 - edge + 2;                     // 꼬리 x
 
@@ -158,22 +159,33 @@
     const MC = cat.mark ? ({ cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a',
       honey: '#b8662a', blue: '#fffaf0', white: '#f06a9a', brown: '#ffd84a' }[cat.fur] || '#f06a9a') : null;
 
-    // 꼬리: 활발은 길게 쭉, 보통은 끝이 말림, 느긋은 짧게
-    if (e === 2 && !cat.chubby) {
+    // 꼬리: 설문의 꼬리 모양이 있으면 그걸 따르고, 없으면 에너지로 정한다.
+    // 활발은 길게 쭉, 보통은 끝이 말림, 느긋은 짧게. 몽땅(bob) / 풍성(fluffy)은 설문으로만 나온다.
+    const tailKind = { bob: 'bob', long: 'tall', fluffy: 'fluffy' }[cat.tail]
+      || (e === 2 && !chub ? 'tall' : (e === 1 || chub) ? 'curl' : 'short');
+    if (tailKind === 'tall') {
       for (let y = 14; y <= 28; y++) sp(y, tx, tx + 1, K);
       for (let y = 9; y <= 13; y++) sp(y, tx + sway, tx + 1 + sway, K);
-    } else if (e === 1 || cat.chubby) {
+    } else if (tailKind === 'curl') {
       for (let y = 20; y <= 28; y++) sp(y, tx, tx + 1, K);
       sp(19, tx - 1 + sway, tx + sway, K);
       sp(18, tx - 1 + sway, tx - 1 + sway, K);
+    } else if (tailKind === 'fluffy') {
+      for (let y = 17; y <= 28; y++) sp(y, tx - 1, tx + 1, K);       // 굵은 꼬리
+      sp(16, tx - 2 + sway, tx + sway, K);
+      sp(15, tx - 2 + sway, tx - 1 + sway, K);
+    } else if (tailKind === 'bob') {
+      for (let y = 26; y <= 28; y++) sp(y, tx, tx + 1, K);           // 몽땅한 꼬리
     } else {
       for (let y = 24; y <= 28; y++) sp(y, tx, tx + 1, K);
       sp(23, tx - 1 + sway, tx + sway, K);
     }
     sp(29, 31 - edge, tx + 1, K);    // 몸통 끝과 꼬리 사이 한 칸까지 이어 붙인다
     if (MC) {                                       // 호스트: 꼬리 끝을 물들인다
-      if (e === 2 && !cat.chubby) { sp(9, tx + sway, tx + 1 + sway, MC); sp(10, tx + sway, tx + 1 + sway, MC); }
-      else if (e === 1 || cat.chubby) { sp(18, tx - 1 + sway, tx - 1 + sway, MC); sp(19, tx - 1 + sway, tx + sway, MC); }
+      if (tailKind === 'tall') { sp(9, tx + sway, tx + 1 + sway, MC); sp(10, tx + sway, tx + 1 + sway, MC); }
+      else if (tailKind === 'curl') { sp(18, tx - 1 + sway, tx - 1 + sway, MC); sp(19, tx - 1 + sway, tx + sway, MC); }
+      else if (tailKind === 'fluffy') { sp(15, tx - 2 + sway, tx - 1 + sway, MC); sp(16, tx - 2 + sway, tx + sway, MC); }
+      else if (tailKind === 'bob') { sp(26, tx, tx + 1, MC); }
       else { sp(23, tx - 1 + sway, tx + sway, MC); }
     }
 
@@ -192,8 +204,19 @@
     for (let y = 26; y <= 29; y++) sp(y, 15, 16, null);
     if (cat.sock) { mr(28, 10, 14, cat.sock); mr(29, 9, 14, cat.sock); }   // 호스트: 색깔 양말
 
-    // 귀: 사교적이면 쫑긋, 독립적이면 옆으로 눕는다
-    if (s === 0) {
+    // 귀: 설문의 귀 모양이 있으면 그걸 따르고, 기본(pointy)은 사교성으로 정한다.
+    // 사교적이면 쫑긋, 독립적이면 옆으로 눕는다. 동글(round) / 접힘(fold) / 큰 귀(big)는 설문으로만 나온다.
+    const earShape = cat.ear && cat.ear !== 'pointy' ? cat.ear : (s === 0 ? 'flat' : 'pointy');
+    if (earShape === 'round') {
+      [[4, 8, 10], [5, 7, 11], [6, 7, 12], [7, 7, 12]].forEach(([y, a, c]) => mr(y, a, c, K));
+      mr(6, 9, 10, PINK); mr(7, 9, 10, PINK);
+    } else if (earShape === 'fold') {
+      [[6, 6, 9], [7, 6, 11]].forEach(([y, a, c]) => mr(y, a, c, K));
+      mr(7, 6, 8, p.shade);                                            // 접힌 자국
+    } else if (earShape === 'big') {
+      [[1, 7, 8], [2, 7, 9], [3, 7, 10], [4, 7, 11], [5, 7, 12], [6, 7, 12], [7, 7, 13]].forEach(([y, a, c]) => mr(y, a, c, K));
+      mr(3, 8, 8, PINK); mr(4, 8, 9, PINK); mr(5, 8, 10, PINK); mr(6, 9, 10, PINK); mr(7, 9, 11, PINK);
+    } else if (earShape === 'flat') {
       [[5, 5, 8], [6, 5, 10], [7, 6, 11]].forEach(([y, a, c]) => mr(y, a, c, K));
     } else {
       [[3, 7, 8], [4, 7, 9], [5, 7, 10], [6, 7, 11], [7, 7, 12]].forEach(([y, a, c]) => mr(y, a, c, K));
@@ -206,6 +229,16 @@
     for (let y = 10; y <= 15; y++) mr(y, 5, 15, K);
     mr(16, 6, 15, K);
     mr(17, 7, 15, K);
+
+    // 털 결(설문 '아침 머리'): 볼털이 뻗치거나(tuft), 온몸이 폭신(fluffy)
+    if (cat.coat === 'tuft' || cat.coat === 'fluffy') {
+      mr(12, 4, 4, K); mr(13, 3, 4, K); mr(14, 4, 4, K);
+      if (cat.coat === 'fluffy') {
+        mr(10, 4, 4, K); mr(11, 3, 4, K); mr(15, 3, 4, K); mr(16, 4, 5, K);   // 풍성한 볼털
+        mr(18, 9, 10, WHITE); mr(19, 9, 10, WHITE);                          // 목 둘레 털
+        mr(22, edge - 1, edge - 1, K); mr(25, edge - 1, edge - 1, K);        // 몸 옆 털 뭉치
+      }
+    }
 
     // 털털함: 삐죽 털과 얼룩, 예민함: 깔끔한 단색
     if (d === 0) { sp(7, 15, 15, K); sp(6, 15, 15, K); sp(7, 16, 16, K); }
@@ -551,14 +584,15 @@
   function framesOf(cat) {
     const key = JSON.stringify([cat.energy, cat.social, cat.delicacy, cat.boldness, cat.fur,
       cat.accessory, cat.accessory2 || '', (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style,
-      cat.mark || '', cat.eyeColor || '', cat.sock || '', cat.pattern || 'plain']);
+      cat.mark || '', cat.eyeColor || '', cat.sock || '', cat.pattern || 'plain',
+      cat.ear || '', cat.tail || '', cat.build || '', cat.coat || '']);
     if (!frameCache.has(key)) frameCache.set(key, [0, 1, 2].map((f) => buildFrame(cat, f)));
     return frameCache.get(key);
   }
 
   // [프레임, 지속ms]
   function sequenceOf(cat) {
-    const d = cat.chubby ? 700 : [650, 400, 250][cat.energy];
+    const d = (cat.chubby || cat.build === 'chubby') ? 700 : [650, 400, 250][cat.energy];
     return [[0, d], [1, d], [0, d], [2, 220]];
   }
 

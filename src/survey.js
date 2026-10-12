@@ -55,6 +55,44 @@ window.QUESTIONS = [
     ],
   },
   {
+    trait: 'ear',
+    text: '다른 사람 이야기를 들을 때 나는?',
+    options: [
+      { label: '온몸으로 집중해서 듣는다', value: 'pointy' },
+      { label: '편안하게 맞장구치며 듣는다', value: 'round' },
+      { label: '한 귀로 듣고 한 귀로 흘린다', value: 'fold' },
+      { label: '리액션이 커서 말을 끊기도 한다', value: 'big' },
+    ],
+  },
+  {
+    trait: 'tail',
+    text: '기분이 좋을 때, 티가 나는 정도는?',
+    options: [
+      { label: '티 안 내고 속으로만 좋아한다', value: 'bob' },
+      { label: '평소랑 비슷하다', value: 'normal' },
+      { label: '표정이랑 몸짓에 다 드러난다', value: 'long' },
+      { label: '온몸이 부풀어 오르는 기분이다', value: 'fluffy' },
+    ],
+  },
+  {
+    trait: 'build',
+    text: '먹는 걸 좋아하는 정도는?',
+    options: [
+      { label: '소식하는 편이다', value: 'slim' },
+      { label: '적당히 먹는다', value: 'normal' },
+      { label: '먹보! 맛집 도장깨기가 취미다', value: 'chubby' },
+    ],
+  },
+  {
+    trait: 'coat',
+    text: '아침에 일어났을 때 머리 상태는?',
+    options: [
+      { label: '깔끔하다', value: 'smooth' },
+      { label: '살짝 뻗쳤다', value: 'tuft' },
+      { label: '폭탄 맞은 것처럼 폭신하다', value: 'fluffy' },
+    ],
+  },
+  {
     trait: 'pattern',
     text: '옷장 속 내 옷은 어떤 느낌이야?',
     options: [
