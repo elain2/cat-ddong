@@ -177,7 +177,7 @@
 
   const GIFT_RATE = 0.45;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
 
-  // 시즌 한정 손님: 그 계절에만 놀러 온다. id는 100번부터, 계절마다 3마리.
+  // 시즌 한정 손님: 방 배경이 그 계절일 때만 놀러 온다. id는 100번부터, 계절마다 3마리.
   const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
   const SEASON_NAME = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
   const LIMITED_BASE = 100;
@@ -411,7 +411,8 @@
   }
 
   // 30분마다 손님이 바뀐다. 반환값은 도감 id 배열.
-  // season을 넘기면 절반쯤의 확률로 그 계절의 한정 손님이 한 자리를 차지한다.
+  // season(방 배경의 계절)을 넘기면 절반쯤의 확률로 그 계절의 한정 손님이 한 자리를 차지한다.
+  // 계절마다 따로 굴리므로, 배경을 바꾸면 그 계절의 한정 손님이 올지 다시 정해진다.
   // bonus(간식이 놓여 있음)면 기본 손님은 그대로 두고 2마리가 더 온다.
   // 이때 한정 손님이 아직 없으면 70% 확률로 그 계절의 한정 손님이 합류한다.
   // who: 사람마다 다른 시드(같은 시각에도 손님이 다르다). 같은 사람은 같은 슬롯에 항상 같은 손님이다.
@@ -424,8 +425,9 @@
       const k = Math.floor(r() * POOL_SIZE);
       if (!ids.includes(k)) ids.push(k);
     }
-    const roll = r();
-    const pickIdx = r();
+    const rs = rng(hashStr('limited-' + slot + tag + '-' + season));
+    const roll = rs();
+    const pickIdx = rs();
     if (season && roll < 0.5) {
       const specials = limitedIdsOf(season);
       ids[count - 1] = specials[Math.floor(pickIdx * specials.length)];
@@ -437,8 +439,8 @@
         const k = Math.floor(r2() * POOL_SIZE);
         if (!ids.includes(k) && !extra.includes(k)) extra.push(k);
       }
-      const roll2 = r2();
-      const pick2 = r2();
+      const roll2 = rs();
+      const pick2 = rs();
       if (season && !ids.some((k) => k >= LIMITED_BASE) && roll2 < 0.7) {
         const specials = limitedIdsOf(season);
         extra[1] = specials[Math.floor(pick2 * specials.length)];

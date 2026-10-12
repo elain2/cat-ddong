@@ -235,7 +235,7 @@
       return changed;
     }
     const canvas = el('canvas', { className: 'room' });
-    const nowSeason = Cat.seasonOf(new Date());
+    let curSeason = Cat.seasonOf(new Date());   // 방 배경의 계절. 한정 손님은 이 계절에 맞춰 온다.
 
     // 간식: 하루 첫 접속에 3개, 새 고양이를 만날 때마다 1개
     const snack = Object.assign({ count: 0, daily: '', until: 0 }, store.get(KEY_SNACK, {}));
@@ -257,7 +257,7 @@
       player = buf[0] >>> 0;
       store.set(KEY_PLAYER, player);
     }
-    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, nowSeason, snackOn(), player);
+    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, curSeason, snackOn(), player);
     const visitors = visitorIds();
     recordVisits(visitors);
     let visitorKey = `${slotNow()}:${visitors.join(',')}`;
@@ -356,6 +356,15 @@
           handle.setSeason(s);
           seasonRow.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'));
           ev.currentTarget.classList.add('on');
+          if (s !== curSeason) {
+            curSeason = s;
+            syncVisitors();
+            renderBook();
+            const guest = visitorIds().find((k) => k >= Cat.LIMITED_BASE);
+            say(guest !== undefined
+              ? `${Cat.SEASON_NAME[s]} 배경이야! ${Cat.catById(guest).name}가 찾아왔어.`
+              : `${Cat.SEASON_NAME[s]} 배경으로 바꿨어. 한정 손님은 아직 안 보여… 조금 기다려 봐.`);
+          }
         },
       })));
 
@@ -455,7 +464,7 @@
       grid.replaceChildren(...Array.from({ length: Cat.POOL_SIZE }, (_, k) => slot(k, '?')));
 
       limitedTitle.textContent = `✨ 시즌 한정 ${n.limited} / ${Cat.LIMITED_COUNT}`;
-      limitedHint.textContent = `지금은 ${Cat.SEASON_NAME[nowSeason]}이에요. 이 계절의 한정 손님이 가끔 놀러 와요. (머리 위에 ★)`;
+      limitedHint.textContent = `방 배경이 ${Cat.SEASON_NAME[curSeason]}이에요. 이 계절의 한정 손님이 가끔 놀러 와요. 배경을 바꾸면 그 계절 손님이 찾아와요. (머리 위에 ★)`;
       const ids = Array.from({ length: Cat.LIMITED_COUNT }, (_, i) => Cat.LIMITED_BASE + i);
       limitedGrid.replaceChildren(...ids.map((id) => slot(id, Cat.SEASON_NAME[Cat.catById(id).season])));
     }
@@ -575,7 +584,7 @@
         cats: ids.map(Cat.catById),
         title: me.owner || me.name,
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
-        season: nowSeason,
+        season: curSeason,
         snack: snackOn(),              // 간식이 놓여 있으면 간식 먹는 장면이 들어간다
         deco: interior,                // 인테리어(벽지/바닥/러그)
         items: interior.items,         // 놓아 둔 가구
