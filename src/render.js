@@ -250,7 +250,7 @@
     mr(15, 10, 15, WHITE);
     mr(16, 10, 15, WHITE);
     mr(17, 11, 15, WHITE);
-    const accs = cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory];
+    const accs = cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory, cat.accessory2].filter(Boolean);
     if (s === 2 || accs.includes('tie') || accs.includes('bottle')) mr(14, 7, 8, BLUSH);
 
     // 눈: 대범할수록 크다. 느긋하면 반쯤 감겨 있다.
@@ -550,7 +550,7 @@
   const frameCache = new Map();
   function framesOf(cat) {
     const key = JSON.stringify([cat.energy, cat.social, cat.delicacy, cat.boldness, cat.fur,
-      cat.accessory, (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style,
+      cat.accessory, cat.accessory2 || '', (cat.accessories || []).join('+'), cat.seed, !!cat.chubby, cat.style,
       cat.mark || '', cat.eyeColor || '', cat.sock || '', cat.pattern || 'plain']);
     if (!frameCache.has(key)) frameCache.set(key, [0, 1, 2].map((f) => buildFrame(cat, f)));
     return frameCache.get(key);

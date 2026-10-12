@@ -113,8 +113,7 @@
 
     const tags = el('div', { className: 'tags' }, [
       el('span', { className: 'tag', textContent: Cat.FUR_LABEL[cat.fur] }),
-      ...(cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
-        .map((a) => el('span', { className: 'tag', textContent: Cat.ACC_LABEL[a] })),
+      ...Cat.accessoryList(cat).map((a) => el('span', { className: 'tag', textContent: Cat.ACC_LABEL[a] })),
     ]);
     const reasons = el('ul', { className: 'reasons' },
       Cat.reasonsOf(cat).map((t) => el('li', { textContent: t })));

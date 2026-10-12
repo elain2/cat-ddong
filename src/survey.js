@@ -65,30 +65,42 @@ window.QUESTIONS = [
     ],
   },
   {
-    trait: 'fur',
+    // 털색 = 시간대(밝기 4단계) x 분위기(따뜻/시원) 두 질문의 조합
+    trait: 'furTone',
     text: '하루 중 가장 좋아하는 시간은?',
     options: [
-      { label: '아침 햇살이 드는 시간', value: 'cream' },
-      { label: '한낮의 따뜻한 햇볕', value: 'honey' },
-      { label: '해질녘 노을', value: 'orange' },
-      { label: '비 갠 뒤의 맑은 오후', value: 'blue' },
-      { label: '코코아 한 잔이 생각나는 저녁', value: 'brown' },
-      { label: '깊고 조용한 밤', value: 'black' },
-      { label: '아직 아무도 안 깬 새벽', value: 'gray' },
-      { label: '눈이 소복이 쌓인 날', value: 'white' },
+      { label: '아침 햇살이 드는 시간', value: 0 },
+      { label: '한낮의 느긋한 오후', value: 1 },
+      { label: '해질녘 노을', value: 2 },
+      { label: '깊고 조용한 밤', value: 3 },
     ],
   },
   {
-    trait: 'accessory',
-    text: '퇴근(하교) 후 저녁, 나의 선택은?',
+    trait: 'furFamily',
+    text: '쉬는 날, 어떤 분위기가 좋아?',
     options: [
-      { label: '회식이다! 넥타이 머리에 감고 달린다', value: 'tie' },
+      { label: '따뜻한 담요와 코코아 한 잔', value: 'warm' },
+      { label: '시원한 바람과 청량한 음료', value: 'cool' },
+    ],
+  },
+  {
+    // 악세사리 = 주말(머리 쪽) x 저녁(얼굴/목/손 쪽) 두 질문. 슬롯이 달라서 둘 다 착용된다.
+    trait: 'accessory',
+    text: '요즘 내 주말은 어떤 모습이야?',
+    options: [
+      { label: '집에서 뒹굴뒹굴', value: 'none' },
+      { label: '미술관·전시 구경', value: 'beret' },
+      { label: '도시락 싸서 소풍', value: 'strawhat' },
+      { label: '왁자지껄 모임! 흥이 오르면 넥타이를 머리에', value: 'tie' },
+    ],
+  },
+  {
+    trait: 'accessory2',
+    text: '퇴근(하교) 후 저녁엔 보통?',
+    options: [
       { label: '카페에서 책 한 권', value: 'glasses' },
       { label: '집에서 혼술, 기분 좋게 한 병', value: 'bottle' },
-      { label: '미술관 데이트, 베레모는 필수', value: 'beret' },
-      { label: '소풍 가자! 도시락 싸서 한강으로', value: 'strawhat' },
-      { label: '이어폰 끼고 혼자 산책', value: 'headphones' },
-      { label: '친구 생일파티에 달려간다', value: 'partyhat' },
+      { label: '목도리 두르고 야경 산책', value: 'scarf' },
       { label: '바로 집으로, 자야지', value: 'none' },
     ],
   },

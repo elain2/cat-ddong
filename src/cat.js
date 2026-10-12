@@ -135,11 +135,19 @@
   // 지금 입고 있는 모든 악세사리(슬롯 순서). 설문 악세사리는 같은 슬롯을 선물이 차지하면 밀려난다.
   function outfitOf(cat) {
     const bySlot = {};
-    const base = cat.accessory;
-    if (base && base !== 'none' && SLOT_OF[base]) bySlot[SLOT_OF[base]] = base;
+    [cat.accessory, cat.accessory2].forEach((base) => {      // 설문으로 정해진 악세사리(주말 + 저녁)
+      if (base && base !== 'none' && SLOT_OF[base]) bySlot[SLOT_OF[base]] = base;
+    });
     const worn = normalizeWorn(cat.worn);
     SLOTS.forEach((s) => { if (worn[s]) bySlot[s] = worn[s]; });
     return SLOTS.map((s) => bySlot[s]).filter(Boolean);
+  }
+
+  // 보여 줄 악세사리 이름 목록 ('none' 제외). 아무것도 없으면 ['none'].
+  function accessoryList(cat) {
+    const list = (cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory, cat.accessory2])
+      .filter((a) => a && a !== 'none');
+    return list.length ? list : ['none'];
   }
 
   // 그릴 때 쓰는 복사본: accessories에 입은 것 전체가 들어간다.
@@ -194,6 +202,13 @@
   }
 
   // picks[i] = QUESTIONS[i]에서 고른 option.value
+  // 털색 격자: 따뜻한 계열 / 시원한 계열 x 밝기 4단계
+  const FUR_GRID = {
+    warm: ['cream', 'honey', 'orange', 'brown'],
+    cool: ['white', 'blue', 'gray', 'black'],
+  };
+  const ACCESSORY_IDS = ['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie', 'beret', 'strawhat',
+    'headphones', 'partyhat', 'scarf'];
   const PATTERNS = ['plain', 'tabby', 'spots', 'point'];
   const PATTERN_PREFIX = { tabby: '줄무늬 ', spots: '점박이 ', point: '포인트 ' };
 
@@ -202,13 +217,22 @@
     const scores = { energy: [], social: [], delicacy: [], boldness: [] };
     let fur = 'cream';
     let accessory = 'none';
+    let accessory2 = 'none';
     let pattern = 'plain';
+    let tone = null;
+    let family = 'warm';
     questions.forEach((q, i) => {
-      if (q.trait === 'fur') fur = picks[i];
+      if (q.trait === 'fur') fur = picks[i];                  // (예전 설문: 한 질문에 털색 직접)
+      else if (q.trait === 'furTone') tone = picks[i];
+      else if (q.trait === 'furFamily') family = picks[i];
       else if (q.trait === 'accessory') accessory = picks[i];
+      else if (q.trait === 'accessory2') accessory2 = picks[i];
       else if (q.trait === 'pattern') pattern = picks[i];
       else scores[q.trait].push(picks[i]);
     });
+
+    // 털색: 시간대(밝기 0~3) x 분위기(따뜻/시원) 두 질문의 조합
+    if (tone !== null) fur = (FUR_GRID[family] || FUR_GRID.warm)[tone] || fur;
 
     const cat = {
       energy: level(scores.energy),
@@ -220,6 +244,7 @@
     };
     cat.seed = hashStr(JSON.stringify([cat, (nickname || '').trim()]));
     cat.owner = cleanOwner(nickname);   // 시드 계산 뒤에 붙인다 (생김새에 영향 없음)
+    cat.accessory2 = ACCESSORY_IDS.includes(accessory2) ? accessory2 : 'none';   // 시드 뒤에 붙인다
     cat.pattern = PATTERNS.includes(pattern) ? pattern : 'plain';   // 시드 뒤에 붙여 같은 답의 기존 고양이는 그대로 나온다
     return withSignature(finish(cat));
   }
@@ -390,11 +415,12 @@
     const lv = (v) => Number.isInteger(v) && v >= 0 && v <= 2;
     if (![o.energy, o.social, o.delicacy, o.boldness].every(lv)) return null;
     if (!['cream', 'orange', 'black', 'gray', 'honey', 'blue', 'white', 'brown', 'butler'].includes(o.fur)) return null;
-    if (!['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie', 'beret', 'strawhat', 'headphones', 'partyhat'].includes(o.accessory)) return null;
+    if (!ACCESSORY_IDS.includes(o.accessory)) return null;
     if (!Number.isFinite(o.seed)) return null;
     return withSignature(finish({
       energy: o.energy, social: o.social, delicacy: o.delicacy, boldness: o.boldness,
-      fur: o.fur, accessory: o.accessory, seed: o.seed >>> 0, chubby: !!o.chubby,
+      fur: o.fur, accessory: o.accessory, accessory2: ACCESSORY_IDS.includes(o.accessory2) ? o.accessory2 : 'none',
+      seed: o.seed >>> 0, chubby: !!o.chubby,
       owner: cleanOwner(o.owner),
       egg: o.egg === 'zipsa' ? 'zipsa' : undefined,
       worn: normalizeWorn(o.worn),
@@ -411,12 +437,11 @@
       REASONS.fur[cat.fur],
       REASONS.pattern[cat.pattern || 'plain'],
     ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈, 꼬리 끝과 양말 색 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
-    .concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
-      .map((a) => REASONS.accessory[a]).filter(Boolean));
+    .concat(accessoryList(cat).map((a) => REASONS.accessory[a]).filter(Boolean));
   }
 
   root.Cat = {
-    buildCat, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, accessoryList, FUR_GRID, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
