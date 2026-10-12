@@ -55,6 +55,16 @@ window.QUESTIONS = [
     ],
   },
   {
+    trait: 'pattern',
+    text: '옷장 속 내 옷은 어떤 느낌이야?',
+    options: [
+      { label: '튀지 않는 무지 위주', value: 'plain' },
+      { label: '스트라이프가 좋아', value: 'tabby' },
+      { label: '도트(점박이)가 좋아', value: 'spots' },
+      { label: '무채색인데 신발·모자로 포인트', value: 'point' },
+    ],
+  },
+  {
     trait: 'fur',
     text: '하루 중 가장 좋아하는 시간은?',
     options: [

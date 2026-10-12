@@ -217,6 +217,34 @@
       }
     }
 
+    // 무늬(설문 '옷장 속 내 옷'): 줄무늬, 점박이, 포인트. 털 색(K)인 칸만 칠한다.
+    const ptn = cat.pattern;
+    if (ptn && ptn !== 'plain') {
+      const lightFur = ['cream', 'orange', 'honey', 'white', 'gray', 'blue'].includes(cat.fur);
+      const ink = lightFur ? '#3f3a4a' : '#e8e4f0';                 // 점 색: 밝은 털엔 어둡게, 어두운 털엔 밝게
+      const stripe = p.shade === K ? '#2a2a3a' : p.shade;
+      const paintK = (y, x0, x1, c) => { for (let x = x0; x <= x1; x++) if (g[y] && g[y][x] === K) g[y][x] = c; };
+      const paintBoth = (y, x0, x1, c) => { paintK(y, x0, x1, c); paintK(y, 31 - x1, 31 - x0, c); };
+      if (ptn === 'tabby') {
+        [9, 10].forEach((y) => { paintBoth(y, 12, 12, stripe); paintK(y, 15, 16, stripe); });   // 이마 세 줄
+        [12, 14].forEach((y) => paintBoth(y, 5, 7, stripe));                                    // 볼
+        [21, 23, 25, 27].forEach((y) => paintBoth(y, edge, edge + 2, stripe));                  // 몸 옆
+        for (let y = 10; y <= 28; y += 3) paintK(y, 31 - edge + 1, 31, stripe);                 // 꼬리 고리
+      } else if (ptn === 'spots') {
+        paintK(9, 7, 9, ink); paintK(10, 6, 9, ink); paintK(11, 6, 8, ink);                     // 머리 왼쪽 큰 점
+        paintK(9, 19, 21, ink);                                                                  // 머리 오른쪽 작은 점
+        paintK(22, edge, edge + 3, ink); paintK(23, edge, edge + 3, ink); paintK(24, edge, edge + 2, ink);
+        paintK(25, 31 - edge - 3, 31 - edge, ink); paintK(26, 31 - edge - 3, 31 - edge, ink);
+        paintK(27, 31 - edge - 2, 31 - edge, ink);
+      } else if (ptn === 'point') {
+        const PT = { cream: '#6b4f3a', orange: '#8a4a1c', black: '#1f1f2e', gray: '#4a5060', honey: '#8a5a1c',
+          blue: '#45566e', white: '#7a6a60', brown: '#4a3020' }[cat.fur] || '#4a3a2e';
+        for (let y = 2; y <= 7; y++) paintK(y, 0, 31, PT);                                      // 귀
+        for (let y = 5; y <= 29; y++) paintK(y, 31 - edge + 1, 31, PT);                         // 꼬리
+        for (let y = 11; y <= 13; y++) paintK(y, 14, 17, PT);                                   // 콧등
+      }
+    }
+
     // 얼굴: 흰 주둥이, 볼터치 (친화적이거나 취했을 때)
     mr(14, 12, 15, WHITE);
     mr(15, 10, 15, WHITE);

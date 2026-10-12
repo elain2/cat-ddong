@@ -42,6 +42,12 @@
       butler: '턱시도를 차려입었어요 → 언제나 단정한 사랑방의 집사예요.',
       gray: '새벽 같은 은회색이에요 → 고요한 시간을 사랑해요.',
     },
+    pattern: {
+      plain: '무늬 없이 깔끔해요 → 담백하고 단정한 매력이에요.',
+      tabby: '줄무늬가 있어요 → 개성이 뚜렷하고 존재감이 있어요.',
+      spots: '점박이 무늬가 있어요 → 어딜 가도 눈에 띄는 매력이에요.',
+      point: '귀와 꼬리 끝이 진해요 → 포인트 하나로 멋을 낼 줄 알아요.',
+    },
     accessory: {
       bottle: '술병을 꼭 쥐고 있어요 → 한 잔이면 세상이 다 내 편이에요.',
       tie: '넥타이를 머리에 감았어요 → 오늘은 달리는 날, 분위기 메이커예요.',
@@ -188,14 +194,19 @@
   }
 
   // picks[i] = QUESTIONS[i]에서 고른 option.value
+  const PATTERNS = ['plain', 'tabby', 'spots', 'point'];
+  const PATTERN_PREFIX = { tabby: '줄무늬 ', spots: '점박이 ', point: '포인트 ' };
+
   function buildCat(questions, picks, nickname) {
     if (isZipsa(nickname)) return zipsaCat();
     const scores = { energy: [], social: [], delicacy: [], boldness: [] };
     let fur = 'cream';
     let accessory = 'none';
+    let pattern = 'plain';
     questions.forEach((q, i) => {
       if (q.trait === 'fur') fur = picks[i];
       else if (q.trait === 'accessory') accessory = picks[i];
+      else if (q.trait === 'pattern') pattern = picks[i];
       else scores[q.trait].push(picks[i]);
     });
 
@@ -209,6 +220,7 @@
     };
     cat.seed = hashStr(JSON.stringify([cat, (nickname || '').trim()]));
     cat.owner = cleanOwner(nickname);   // 시드 계산 뒤에 붙인다 (생김새에 영향 없음)
+    cat.pattern = PATTERNS.includes(pattern) ? pattern : 'plain';   // 시드 뒤에 붙여 같은 답의 기존 고양이는 그대로 나온다
     return withSignature(finish(cat));
   }
 
@@ -257,7 +269,7 @@
   function finish(cat) {
     // 설문 고양이는 '고양이가 된 나'다. 입력한 이름이 곧 고양이 이름이다.
     cat.name = cat.owner || autoName(cat.seed);
-    cat.title = TITLES[cat.energy][cat.social];
+    cat.title = (PATTERN_PREFIX[cat.pattern] || '') + TITLES[cat.energy][cat.social];
     if (cat.egg === 'zipsa') { cat.name = '집사'; cat.title = '사랑방의 집사 냥'; }
     return cat;
   }
@@ -386,6 +398,7 @@
       owner: cleanOwner(o.owner),
       egg: o.egg === 'zipsa' ? 'zipsa' : undefined,
       worn: normalizeWorn(o.worn),
+      pattern: PATTERNS.includes(o.pattern) ? o.pattern : 'plain',
     }));
   }
 
@@ -396,6 +409,7 @@
       REASONS.delicacy[cat.delicacy],
       REASONS.boldness[cat.boldness],
       REASONS.fur[cat.fur],
+      REASONS.pattern[cat.pattern || 'plain'],
     ].concat(cat.mark ? [`이마의 ${MARK_LABEL[cat.mark]} 무늬와 ${EYE_LABEL[cat.eyeColor] || ''} 눈, 꼬리 끝과 양말 색 → 도감의 어떤 고양이와도 다른, 이 사랑방의 호스트만의 표식이에요.`] : [])
     .concat((cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory])
       .map((a) => REASONS.accessory[a]).filter(Boolean));
