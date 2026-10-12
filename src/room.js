@@ -450,8 +450,8 @@
       }
       drawParticles(ctx, season, t);
 
-      // 들고 있는 고양이가 앉을 수 있는 자리를 반짝여 알려준다
-      if (drag && drag.moved) {
+      // 들고 있는 고양이가 앉을 수 있는 자리를 반짝여 알려준다 (가구를 끄는 중에는 drag.a가 없다)
+      if (drag && drag.moved && drag.a) {
         const P = perchAt(drag.a.x + 16, drag.a.y);
         if (P && Math.floor(t / 180) % 2 === 0) {
           ctx.fillStyle = '#ffd84a';
@@ -493,8 +493,13 @@
     function loop(now) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
-      update(dt);
-      draw(now);
+      // 한 프레임에서 에러가 나도 루프가 멈추지 않게 한다. (멈추면 방이 배경만 남은 채 굳는다)
+      try {
+        update(dt);
+        draw(now);
+      } catch (err) {
+        if (!loop.warned) { loop.warned = true; console.error('사랑방 그리기 오류:', err); }
+      }
       raf = requestAnimationFrame(loop);
     }
 
