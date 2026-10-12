@@ -83,25 +83,4 @@ window.QUESTIONS = [
       { label: '시원한 바람과 청량한 음료', value: 'cool' },
     ],
   },
-  {
-    // 악세사리 = 주말(머리 쪽) x 저녁(얼굴/목/손 쪽) 두 질문. 슬롯이 달라서 둘 다 착용된다.
-    trait: 'accessory',
-    text: '요즘 내 주말은 어떤 모습이야?',
-    options: [
-      { label: '집에서 뒹굴뒹굴', value: 'none' },
-      { label: '미술관·전시 구경', value: 'beret' },
-      { label: '도시락 싸서 소풍', value: 'strawhat' },
-      { label: '왁자지껄 모임! 흥이 오르면 넥타이를 머리에', value: 'tie' },
-    ],
-  },
-  {
-    trait: 'accessory2',
-    text: '퇴근(하교) 후 저녁엔 보통?',
-    options: [
-      { label: '카페에서 책 한 권', value: 'glasses' },
-      { label: '집에서 혼술, 기분 좋게 한 병', value: 'bottle' },
-      { label: '목도리 두르고 야경 산책', value: 'scarf' },
-      { label: '바로 집으로, 자야지', value: 'none' },
-    ],
-  },
 ];

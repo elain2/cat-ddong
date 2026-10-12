@@ -830,5 +830,27 @@
   if (saved && saved.accessory === 'headphones') saved.accessory = 'tie'; // 이름 변경 마이그레이션
   if (saved) Cat.withSignature(saved);   // 예전에 만든 고양이에도 호스트 표식을 붙인다
   if (saved && saved.owner) saved.name = saved.owner;   // 예전에 만든 고양이: 입력한 이름이 곧 고양이 이름
+
+  // 악세사리는 이제 선물로만 얻는다. 예전에 설문으로 입고 태어난 악세사리는 선물함에 넣고
+  // 같은 자리에 착용시켜서, 모습은 그대로이면서 벗고 바꿀 수 있게 한다. (집사 이스터에그는 디자인이라 그대로)
+  if (saved && !saved.egg) {
+    const owned = new Set(store.get(KEY_GIFTS, []));
+    saved.worn = Cat.normalizeWorn(saved.worn);
+    let moved = false;
+    ['accessory', 'accessory2'].forEach((k) => {
+      const a = saved[k];
+      if (a && a !== 'none' && Cat.GIFT_IDS.includes(a)) {
+        owned.add(a);
+        const slot = Cat.SLOT_OF[a];
+        if (!saved.worn[slot]) saved.worn[slot] = a;
+        saved[k] = 'none';
+        moved = true;
+      }
+    });
+    if (moved) {
+      store.set(KEY_GIFTS, [...owned]);
+      store.set(KEY_ME, saved);
+    }
+  }
   if (saved) room(saved); else intro();
 })();
