@@ -23,7 +23,7 @@
   const bgCache = {};
   function background(season, deco) {
     const d = Object.assign({ wall: 'default', floor: 'wood', rug: 'default' }, deco || {});
-    const key = `${season}|${d.wall}|${d.floor}|${d.rug}`;
+    const key = `${season}|${d.wall}|${d.floor}|${d.rug}|${d.hidePumpkin ? 1 : 0}`;
     if (bgCache[key]) return bgCache[key];
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -129,8 +129,8 @@
       R(42, 129, 2, 2, OUT); R(50, 129, 2, 2, OUT);
       R(100, 168, 8, 3, '#7fd0ff'); // 물방울 자국
     } else if (season === 'autumn') {
-      R(38, 126, 22, 14, '#e8892a'); R(46, 126, 2, 14, '#c76f1a'); R(52, 126, 2, 14, '#c76f1a');
-      R(47, 120, 4, 6, '#5b7a3a');
+      // 호박은 가구('호박')로 꺼내 놓으면 배경에서는 빠진다
+      if (!d.hidePumpkin) drawItem(ctx, 'pumpkin', 49, 140, 0);
       R(90, 160, 4, 3, '#c8693a'); R(20, 150, 4, 3, '#e8892a'); R(130, 168, 4, 3, '#b5683a');
     } else {
       for (let i = 0; i < 6; i++) R(46 - i * 3, 100 + i * 8, 6 + i * 6, 8, '#3f8f55');
@@ -199,6 +199,10 @@
       const fx = x - 8 + Math.floor((t / 70) % 14);
       R(fx, y - 12, 4, 2, '#f2a64e'); R(fx - 2, y - 13, 2, 4, '#e8892a');
       R(x + 6, y - 14, 2, 7, '#5fa85a'); R(x - 8, y - 11, 1, 1, '#ffffff');
+    } else if (id === 'pumpkin') {
+      R(x - 11, y - 14, 22, 14, '#e8892a');
+      R(x - 3, y - 14, 2, 14, '#c76f1a'); R(x + 3, y - 14, 2, 14, '#c76f1a');
+      R(x - 2, y - 20, 4, 6, '#5b7a3a');
     } else if (id === 'bear') {
       edge(x - 6, y - 8, 12, 8); R(x - 6, y - 8, 12, 8, '#b98c5a');
       edge(x - 5, y - 15, 10, 8); R(x - 5, y - 15, 10, 8, '#b98c5a');
@@ -441,7 +445,7 @@
     }
 
     function draw(t) {
-      ctx.drawImage(background(season, deco), 0, 0);
+      ctx.drawImage(background(season, Object.assign({}, deco, { hidePumpkin: items.some((it) => it.id === 'pumpkin') })), 0, 0);
       if (opts.snackOn && opts.snackOn()) {         // 간식이 소복
         ctx.fillStyle = '#b9733c'; ctx.fillRect(152, 144, 14, 5);
         ctx.fillStyle = '#c98550'; ctx.fillRect(154, 142, 10, 3);

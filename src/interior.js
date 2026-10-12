@@ -29,6 +29,7 @@
     { id: 'lamp', label: '스탠드', tier: 2, w: 12, h: 28, perch: false },
     { id: 'bed', label: '고양이 침대', tier: 2, w: 28, h: 11, perch: true },
     { id: 'tank', label: '어항', tier: 3, w: 24, h: 20, perch: false },
+    { id: 'pumpkin', label: '호박', tier: 1, w: 22, h: 20, perch: false },
     { id: 'bear', label: '곰인형', tier: 3, w: 14, h: 16, perch: true },
   ];
 
