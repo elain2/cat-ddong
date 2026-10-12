@@ -16,6 +16,7 @@
   const SNACK_CAP_MS = 2 * 60 * 60 * 1000;   // 연장해도 남은 시간은 최대 2시간
   const KEY_GIFTS = 'cat-ddong.gifts';        // 가진 선물 id 목록
   const KEY_TAKEN = 'cat-ddong.gift-taken';   // 이미 받은 선물 '슬롯:고양이id'
+  const KEY_INTERIOR = 'cat-ddong.interior';  // 인테리어(벽지/바닥/러그/가구 배치)
   const KEY_PLAYER = 'cat-ddong.player';      // 사람마다 다른 시드 (손님/선물 순서가 친구와 겹치지 않게)
   const KEY_LOG = 'cat-ddong.log';   // 손님별 방문 기록 {id: {n, first, last, prev, slot}}
   const SLOT_MS = 30 * 60 * 1000;
@@ -161,6 +162,7 @@
       snack: store.get(KEY_SNACK, {}),
       gifts: store.get(KEY_GIFTS, []),
       player: store.get(KEY_PLAYER, null),
+      interior: store.get(KEY_INTERIOR, null),
     };
     const bytes = new TextEncoder().encode(JSON.stringify(data));
     return BACKUP_PREFIX + btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
@@ -200,7 +202,7 @@
       const gifts = Array.isArray(raw.gifts)
         ? [...new Set(raw.gifts.filter((g) => Cat.GIFT_IDS.includes(g)))] : [];
       const player = Number.isInteger(raw.player) && raw.player >= 0 && raw.player < 4294967296 ? raw.player : null;
-      return { me, met, log, snack, gifts, player };
+      return { me, met, log, snack, gifts, player, interior: Interior.clean(raw.interior) };
     } catch (e) {
       return null;
     }
@@ -282,7 +284,16 @@
         limited: ids.filter((k) => k >= Cat.LIMITED_BASE).length,
       };
     };
+    const interior = Interior.clean(store.get(KEY_INTERIOR, {}));
+    const saveInterior = () => store.set(KEY_INTERIOR, {
+      wall: interior.wall, floor: interior.floor, rug: interior.rug,
+      items: interior.items.map((it) => ({ id: it.id, x: it.x, y: it.y })),
+    });
     const handle = Room.mount(canvas, {
+      deco: interior,
+      items: interior.items,
+      onItemsChange(list) { interior.items = list; saveInterior(); renderInterior(); },
+      onSelect() { renderInterior(); },
       me: shown(),
       visitors,
       snackOn,
@@ -316,6 +327,7 @@
           const prevText = e && e.prev ? ` 지난번은 ${ago(e.prev)}이었어.` : '';
           say(`${c.name}: ${c.title}. ${e ? e.n : 1}번째 방문이야!${prevText}`);
         } else {
+          const tierBefore = Interior.tierFor(met.size);
           met.add(actor.poolIndex);
           store.set(KEY_MET, [...met]);
           snack.count = Math.min(SNACK_MAX, snack.count + 1);   // 새 친구를 만나면 간식 +1
@@ -326,6 +338,11 @@
             : `${c.name}(${c.title})를 처음 만났어! 도감 ${n.normal}/${Cat.POOL_SIZE} (간식 +1)`);
           renderBook();
           renderSnack();
+          const tierAfter = Interior.tierFor(met.size);
+          if (tierAfter > tierBefore) {
+            say(`${bubble.textContent} 🛋 ${tierAfter === 1 ? '인테리어가 열렸어!' : '새 인테리어가 열렸어!'}`);
+          }
+          renderInterior();
         }
         const gid = giftAvailable(actor.poolIndex);
         if (gid) takeGift(actor, gid);
@@ -527,6 +544,7 @@
         store.set(KEY_SNACK, data.snack);
         store.set(KEY_GIFTS, data.gifts);
         if (data.player !== null) store.set(KEY_PLAYER, data.player);
+        store.set(KEY_INTERIOR, data.interior);
         location.reload();
       },
     });
@@ -677,6 +695,110 @@
     }
     const photoBtn = el('button', { className: 'btn ghost snack-btn', textContent: '📸 도감 사진 저장', onclick: savePhoto });
 
+    // ---- 인테리어: 도감을 10/20/30마리 모으면 단계별로 열린다 ----
+    const interiorTitle = el('h3', { className: 'book-title', textContent: '🛋 인테리어' });
+    const interiorHint = el('p', { className: 'book-hint' });
+    const interiorBody = el('div', { className: 'interior-body' });
+    const interiorCard = el('div', { className: 'card' }, [interiorTitle, interiorHint, interiorBody]);
+    interiorCard.style.display = 'none';
+    let interiorOpen = false;
+
+    function optionRow(label, list, current, tier, onPick) {
+      return el('div', { className: 'irow' }, [
+        el('b', { textContent: label }),
+        ...list.map((o) => {
+          const locked = o.tier > tier;
+          const b = el('button', {
+            className: 'chip' + (current === o.id ? ' on' : ''),
+            textContent: locked ? `🔒 ${o.label} (${Interior.needFor(o.tier)}마리)` : o.label,
+            disabled: locked,
+          });
+          if (!locked) b.onclick = () => onPick(o.id);
+          return b;
+        }),
+      ]);
+    }
+
+    function renderInterior() {
+      const tier = Interior.tierFor(met.size);
+      const next = Interior.TIER_AT[tier];
+      if (tier === 0) {
+        interiorHint.textContent = `도감을 ${Interior.TIER_AT[0]}마리 모으면 열려요. (지금 ${met.size}/${Interior.TIER_AT[0]})`;
+        interiorBody.replaceChildren();
+      } else {
+        interiorHint.textContent = (next
+          ? `벽지, 바닥, 러그, 가구를 바꿔 보세요. ${next}마리를 모으면 더 열려요. (지금 ${met.size}/${next})`
+          : '인테리어가 모두 열렸어요!') + ' 가구는 끌어서 옮겨요.';
+        const apply = () => { handle.setDeco(interior); saveInterior(); renderInterior(); };
+        const sel = interior.items.find((it) => it.uid === handle.selected);
+        const furniture = el('div', { className: 'irow' }, [
+          el('b', { textContent: `가구 ${interior.items.length}/${Interior.MAX_ITEMS}` }),
+          ...Interior.ITEMS.map((o) => {
+            const locked = o.tier > tier;
+            const b = el('button', {
+              className: 'chip',
+              textContent: locked ? `🔒 ${o.label} (${Interior.needFor(o.tier)}마리)` : `+ ${o.label}`,
+              disabled: locked || interior.items.length >= Interior.MAX_ITEMS,
+            });
+            b.onclick = () => {
+              const it = handle.addItem(o.id);
+              if (!it) return;
+              interior.items = handle.getItems();
+              saveInterior();
+              say(`${o.label}${o.perch ? ' — 고양이를 올려 볼 수 있어!' : ' 놓았어!'}`);
+              renderInterior();
+            };
+            return b;
+          }),
+        ]);
+        const actions = el('div', { className: 'irow' }, [
+          el('button', {
+            className: 'chip', textContent: '선택한 가구 치우기', disabled: !sel,
+            onclick: () => { handle.removeItem(sel.uid); interior.items = handle.getItems(); saveInterior(); renderInterior(); },
+          }),
+          el('button', {
+            className: 'chip', textContent: '가구 모두 치우기', disabled: !interior.items.length,
+            onclick: () => {
+              interior.items.slice().forEach((it) => handle.removeItem(it.uid));
+              interior.items = handle.getItems(); saveInterior(); renderInterior();
+            },
+          }),
+        ]);
+        interiorBody.replaceChildren(
+          optionRow('벽지', Interior.WALLS, interior.wall, tier, (id) => { interior.wall = id; apply(); }),
+          optionRow('바닥', Interior.FLOORS, interior.floor, tier, (id) => { interior.floor = id; apply(); }),
+          optionRow('러그', Interior.RUGS, interior.rug, tier, (id) => { interior.rug = id; apply(); }),
+          furniture, actions,
+        );
+      }
+      updateInteriorBtn();
+    }
+
+    function updateInteriorBtn() {
+      const tier = Interior.tierFor(met.size);
+      interiorBtn.textContent = tier === 0
+        ? `🔒 인테리어 (도감 ${met.size}/${Interior.TIER_AT[0]})`
+        : (interiorOpen ? '🛋 인테리어 닫기' : '🛋 인테리어');
+      interiorBtn.classList.toggle('locked', tier === 0);
+    }
+
+    const interiorBtn = el('button', {
+      className: 'btn ghost',
+      onclick: () => {
+        const tier = Interior.tierFor(met.size);
+        if (tier === 0) {
+          say(`도감을 ${Interior.TIER_AT[0]}마리 모으면 인테리어가 열려! 지금 ${met.size}마리야.`);
+          return;
+        }
+        interiorOpen = !interiorOpen;
+        interiorCard.style.display = interiorOpen ? '' : 'none';
+        handle.setEditMode(interiorOpen);
+        renderInterior();
+        if (interiorOpen) say('가구를 끌어서 옮겨 봐. 쿠션이나 침대 위엔 고양이를 올릴 수 있어!');
+      },
+    });
+    renderInterior();
+
     const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
     const mine = el('button', { className: 'btn ghost', textContent: '내 모습 보기', onclick: () => result(shown(), me) });
     const again = el('button', {
@@ -696,7 +818,7 @@
     });
 
     const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid, el('div', { className: 'row gift-actions' }, [undressBtn])]);
-    show(canvas, snackBar, brag, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, el('div', { className: 'row gift-actions' }, [photoBtn]), grid]),
+    show(canvas, snackBar, brag, interiorBtn, interiorCard, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, el('div', { className: 'row gift-actions' }, [photoBtn]), grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
       el('div', { className: 'row' }, [mine, rename, again]));

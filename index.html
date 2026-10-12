@@ -126,6 +126,11 @@
       width: 100%; margin: 8px 0; padding: 8px; font: 12px/1.4 monospace; color: var(--ink);
       background: #fff; border: 2px solid var(--ink); resize: vertical;
     }
+    .interior-body { display: flex; flex-direction: column; gap: 4px; }
+    .irow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .irow b { font-size: 13px; min-width: 56px; }
+    .chip:disabled { opacity: 0.55; cursor: default; }
+    .btn.locked { opacity: 0.7; }
     .gift-actions { margin-top: 10px; justify-content: flex-end; }
     .gift-slot { cursor: pointer; }
     .gift-slot:hover canvas { transform: translateY(-2px); }
@@ -150,6 +155,7 @@
   <script src="src/cat.js"></script>
   <script src="src/gif.js"></script>
   <script src="src/render.js"></script>
+  <script src="src/interior.js"></script>
   <script src="src/room.js"></script>
   <script src="src/showcase.js"></script>
   <script src="src/app.js"></script>
