@@ -12,6 +12,10 @@
     orange: { base: '#f2a64e', shade: '#d4802c', patch: '#fbe3b8' },
     black: { base: '#4a4a63', shade: '#33334a', patch: '#6c6c8a' },
     gray: { base: '#b7bcc8', shade: '#939aaa', patch: '#e8ebf2' },
+    honey: { base: '#f0c35a', shade: '#d9a63a', patch: '#fbe3a0' },
+    blue: { base: '#8fa4bd', shade: '#6f86a3', patch: '#c5d2e3' },
+    white: { base: '#f3f1ee', shade: '#d9d5cf', patch: '#dcd6cc' },
+    brown: { base: '#a67c5b', shade: '#85603f', patch: '#c9a27e' },
     butler: { base: '#3b3b52', shade: '#3b3b52', patch: '#555570' },   // 집사 턱시도
   };
 
@@ -151,7 +155,8 @@
     const tx = 31 - edge + 2;                     // 꼬리 x
 
     // 호스트 표식 색: 털색과 대비되는 색 (이마 무늬, 꼬리 끝에 쓴다)
-    const MC = cat.mark ? ({ cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a' }[cat.fur] || '#f06a9a') : null;
+    const MC = cat.mark ? ({ cream: '#d9886a', orange: '#fffaf0', black: '#ffd84a', gray: '#f06a9a',
+      honey: '#b8662a', blue: '#fffaf0', white: '#f06a9a', brown: '#ffd84a' }[cat.fur] || '#f06a9a') : null;
 
     // 꼬리: 활발은 길게 쭉, 보통은 끝이 말림, 느긋은 짧게
     if (e === 2 && !cat.chubby) {

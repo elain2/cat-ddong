@@ -59,9 +59,13 @@ window.QUESTIONS = [
     text: '하루 중 가장 좋아하는 시간은?',
     options: [
       { label: '아침 햇살이 드는 시간', value: 'cream' },
+      { label: '한낮의 따뜻한 햇볕', value: 'honey' },
       { label: '해질녘 노을', value: 'orange' },
+      { label: '비 갠 뒤의 맑은 오후', value: 'blue' },
+      { label: '코코아 한 잔이 생각나는 저녁', value: 'brown' },
       { label: '깊고 조용한 밤', value: 'black' },
       { label: '아직 아무도 안 깬 새벽', value: 'gray' },
+      { label: '눈이 소복이 쌓인 날', value: 'white' },
     ],
   },
   {

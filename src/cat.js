@@ -35,6 +35,10 @@
       cream: '아침 햇살 같은 크림색이에요 → 하루의 시작을 좋아해요.',
       orange: '노을빛 오렌지색이에요 → 해질녘이 제일 좋아요.',
       black: '밤처럼 까만 털이에요 → 조용한 밤이 편해요.',
+      honey: '꿀처럼 따뜻한 금빛 털이에요 → 한낮의 햇볕 아래가 제일 좋아요.',
+      blue: '비 갠 하늘 같은 푸른 털이에요 → 차분한 오후를 좋아해요.',
+      white: '눈처럼 하얀 털이에요 → 조용하고 깨끗한 날이 좋아요.',
+      brown: '진한 초콜릿 빛 털이에요 → 따뜻한 저녁 한 잔을 좋아해요.',
       butler: '턱시도를 차려입었어요 → 언제나 단정한 사랑방의 집사예요.',
       gray: '새벽 같은 은회색이에요 → 고요한 시간을 사랑해요.',
     },
@@ -75,7 +79,10 @@
     },
   };
 
-  const FUR_LABEL = { cream: '크림', orange: '오렌지', black: '검정', gray: '은회색', butler: '턱시도' };
+  const FUR_LABEL = {
+    cream: '크림', orange: '오렌지', black: '검정', gray: '은회색', butler: '턱시도',
+    honey: '꿀색', blue: '블루', white: '화이트', brown: '초콜릿',
+  };
   const ACC_LABEL = {
     bowtie: '나비넥타이', bottle: '술병', tie: '넥타이', glasses: '안경', bell: '방울', none: '맨몸',
     blossom: '벚꽃', shades: '선글라스', leaf: '단풍잎', scarf: '목도리',
@@ -370,7 +377,7 @@
     if (!o || typeof o !== 'object') return null;
     const lv = (v) => Number.isInteger(v) && v >= 0 && v <= 2;
     if (![o.energy, o.social, o.delicacy, o.boldness].every(lv)) return null;
-    if (!['cream', 'orange', 'black', 'gray', 'butler'].includes(o.fur)) return null;
+    if (!['cream', 'orange', 'black', 'gray', 'honey', 'blue', 'white', 'brown', 'butler'].includes(o.fur)) return null;
     if (!['none', 'tie', 'glasses', 'bell', 'bottle', 'bowtie'].includes(o.accessory)) return null;
     if (!Number.isFinite(o.seed)) return null;
     return withSignature(finish({
