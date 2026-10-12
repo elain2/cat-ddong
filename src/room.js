@@ -233,9 +233,12 @@
 
   // a가 b 곁에 있을 때 a의 반응. 성격과 취향으로 정해진다.
   const DRINKERS = ['tie', 'bottle'];
+  // 지금 입고 있는 것 중에 건배 소품이 있는지 (선물로 입은 넥타이도 포함)
+  const drinks = (cat) => (cat.accessories && cat.accessories.length ? cat.accessories : [cat.accessory, cat.accessory2])
+    .some((x) => DRINKERS.includes(x));
   function reactionOf(a, b) {
     const A = a.cat, B = b.cat;
-    if (DRINKERS.includes(A.accessory) && DRINKERS.includes(B.accessory)) return 'note'; // 건배
+    if (drinks(A) && drinks(B)) return 'note'; // 건배
     if (A.social === 0) return 'annoyed';
     if (A.social === 2) return 'heart';
     if (A.energy === 2 && B.energy === 2) return 'note';
