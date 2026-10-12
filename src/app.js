@@ -578,6 +578,8 @@
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
         season: nowSeason,
         snack: snackOn(),              // 간식이 놓여 있으면 간식 먹는 장면이 들어간다
+        deco: interior,                // 인테리어(벽지/바닥/러그)
+        items: interior.items,         // 놓아 둔 가구
         url: 'elain2.github.io/cat-ddong',
       });
 

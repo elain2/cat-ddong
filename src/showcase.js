@@ -113,17 +113,60 @@
     }
 
     function background(c, t) {
-      c.fillStyle = T.wall; c.fillRect(0, 0, W, 560);
-      c.fillStyle = T.trim; c.globalAlpha = 0.35;
-      for (let x = 0; x < W; x += 36) c.fillRect(x, 0, 4, 560);
-      c.globalAlpha = 1;
-      c.fillStyle = T.trim; c.fillRect(0, 548, W, 12);
-      // 바닥
-      c.fillStyle = '#dcae78'; c.fillRect(0, 560, W, H - 560);
-      c.fillStyle = '#c99763';
-      for (let y = 560, row = 0; y < H; y += 40, row++) {
-        c.fillRect(0, y, W, 3);
-        for (let x = (row % 2) * 60; x < W; x += 120) c.fillRect(x, y, 3, 40);
+      // 벽 (인테리어 벽지)
+      const deco = opts.deco || {};
+      let trim = T.trim;
+      if (deco.wall === 'cream') {
+        c.fillStyle = '#fff4dc'; c.fillRect(0, 0, W, 560);
+        c.fillStyle = '#ecd9b0';
+        for (let y = 10; y < 560; y += 18) c.fillRect(0, y, W, 2);
+        trim = '#e6c98a';
+      } else if (deco.wall === 'mint' || deco.wall === 'pink') {
+        const mint = deco.wall === 'mint';
+        c.fillStyle = mint ? '#dff3ea' : '#fde4ee'; c.fillRect(0, 0, W, 560);
+        c.fillStyle = mint ? '#bfe3d3' : '#f7b6c8';
+        for (let y = 14, row = 0; y < 540; y += 28, row++) {
+          for (let x = (row % 2) * 14 + 10; x < W; x += 28) c.fillRect(x, y, 6, 6);
+        }
+        trim = mint ? '#9fd4bd' : '#eaa0b8';
+      } else if (deco.wall === 'night') {
+        c.fillStyle = '#2f3556'; c.fillRect(0, 0, W, 560);
+        let seed = 7;
+        for (let i = 0; i < 70; i++) {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          const sx = seed % W;
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          const sy = seed % 540;
+          c.fillStyle = i % 3 ? '#ffe9a8' : '#ffffff';
+          c.fillRect(sx, sy, i % 5 === 0 ? 6 : 3, i % 5 === 0 ? 6 : 3);
+        }
+        trim = '#232846';
+      } else {
+        c.fillStyle = T.wall; c.fillRect(0, 0, W, 560);
+        c.fillStyle = T.trim; c.globalAlpha = 0.35;
+        for (let x = 0; x < W; x += 36) c.fillRect(x, 0, 4, 560);
+        c.globalAlpha = 1;
+      }
+      c.fillStyle = trim; c.fillRect(0, 548, W, 12);
+      // 바닥 (인테리어 바닥)
+      if (deco.floor === 'tile') {
+        c.fillStyle = '#ece6da'; c.fillRect(0, 560, W, H - 560);
+        c.fillStyle = '#cfc6b4';
+        for (let y = 560; y < H; y += 40) c.fillRect(0, y, W, 2);
+        for (let x = 0; x < W; x += 40) c.fillRect(x, 560, 2, H - 560);
+      } else if (deco.floor === 'check') {
+        c.fillStyle = '#f4d9a8'; c.fillRect(0, 560, W, H - 560);
+        c.fillStyle = '#e3bd7e';
+        for (let y = 560, row = 0; y < H; y += 30, row++) {
+          for (let x = (row % 2) * 30; x < W; x += 60) c.fillRect(x, y, 30, 30);
+        }
+      } else {
+        c.fillStyle = '#dcae78'; c.fillRect(0, 560, W, H - 560);
+        c.fillStyle = '#c99763';
+        for (let y = 560, row = 0; y < H; y += 40, row++) {
+          c.fillRect(0, y, W, 3);
+          for (let x = (row % 2) * 60; x < W; x += 120) c.fillRect(x, y, 3, 40);
+        }
       }
       // 창문과 선반
       c.fillStyle = '#8a6a4a'; c.fillRect(60, 130, 180, 150);
@@ -137,9 +180,20 @@
       c.fillStyle = '#8a6a4a'; c.fillRect(400, 130, 56, 60);
       c.fillStyle = '#f4e4a8'; c.fillRect(408, 138, 40, 44);
       // 러그
-      c.fillStyle = T.rug; c.fillRect(30, 600, 480, 330);
-      c.fillStyle = T.rug2; c.fillRect(44, 614, 452, 302);
-      c.fillStyle = T.rug; c.fillRect(58, 628, 424, 274);
+      const RUGC = { blue: ['#4f7fd2', '#bcd0f5'], green: ['#4fa86b', '#bfe6c9'], purple: ['#8a5ac8', '#d6c4f0'] };
+      const [rug1, rug2] = RUGC[deco.rug] || [T.rug, T.rug2];
+      c.fillStyle = rug1; c.fillRect(30, 600, 480, 330);
+      c.fillStyle = rug2; c.fillRect(44, 614, 452, 302);
+      c.fillStyle = rug1; c.fillRect(58, 628, 424, 274);
+      // 인테리어 가구: 고양이들이 줄 서는 바닥을 가리지 않도록, 가로 위치는 방과 같게 하고
+      // 뒷벽 쪽 띠(고양이 뒷줄의 귀 바로 위)에 줄지어 놓는다. 방에서 더 앞쪽에 둔 가구가 살짝 아래에 온다.
+      (opts.items || []).slice().sort((a, b) => a.y - b.y).forEach((it) => {
+        c.save();
+        c.translate(Math.round(it.x * (W / 240)), Math.round(616 + ((it.y - 104) / 68) * 10));   // 616~626: 뒷줄 고양이 귀(627) 바로 위
+        c.scale(2.5, 2.5);
+        Room.drawItem(c, it.id, 0, 0, t * 1000);
+        c.restore();
+      });
       // 떨어지는 파티클
       c.fillStyle = T.fall;
       for (let i = 0; i < 26; i++) {

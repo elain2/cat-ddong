@@ -698,5 +698,5 @@
     };
   }
 
-  root.Room = { mount, seasonOf, SEASONS, SEASON_LABEL, W, H };
+  root.Room = { mount, seasonOf, SEASONS, SEASON_LABEL, W, H, drawItem };
 })(typeof window !== 'undefined' ? window : globalThis);
