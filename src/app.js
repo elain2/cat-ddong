@@ -101,8 +101,15 @@
     show(el('div', { className: 'loading', textContent: '🐾 🐾 🐾' }));
     setTimeout(() => {
       const cat = Cat.buildCat(QUESTIONS, picks, nick);
+      const gift = Cat.starterGift(cat);   // 설문에 맞는 첫 선물: 선물함에 넣고 바로 착용
+      if (gift) {
+        const owned = new Set(store.get(KEY_GIFTS, []));
+        owned.add(gift);
+        store.set(KEY_GIFTS, [...owned]);
+        cat.worn = { [Cat.SLOT_OF[gift]]: gift };
+      }
       store.set(KEY_ME, cat);
-      result(cat);
+      result(Cat.dressed(cat), cat);
     }, 1000);
   }
 

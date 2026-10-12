@@ -175,6 +175,24 @@
     return Object.assign({}, cat, { accessories: outfitOf(cat) });
   }
 
+  // 처음 만났을 때 설문 답에 어울리는 액세서리 하나를 준다. 맞는 후보가 여럿이면 시드로 하나를 고른다.
+  function starterGift(cat) {
+    if (!cat || cat.egg) return null;
+    const c = [];
+    if (cat.pattern === 'point') c.push('beret');          // 신발·모자로 포인트
+    if (cat.build === 'chubby') c.push('icecream');        // 먹보
+    if (cat.energy === 2) c.push('backpack');              // 어디 갈지 검색 중
+    if (cat.energy === 0) c.push('sleepmask');             // 이불 속 한 시간
+    if (cat.social === 2) c.push('bandana');               // 먼저 말 거는 사람
+    if (cat.social === 0) c.push('headphones');            // 구석에서 조용히
+    if (cat.delicacy === 2) c.push('monocle');             // 모든 물건에 제자리
+    if (cat.boldness === 2) c.push('cape');                // 일단 하고 본다
+    if (cat.tail === 'fluffy') c.push('butterfly');        // 온몸이 부풀어 오름
+    if (cat.ear === 'big') c.push('heartglasses');         // 리액션이 큼
+    if (!c.length) c.push('ribbonpin');
+    return c[(cat.seed >>> 0) % c.length];
+  }
+
   const GIFT_RATE = 0.45;   // 손님이 선물을 들고 올 확률(30분 슬롯마다)
 
   // 시즌 한정 손님: 방 배경이 그 계절일 때만 놀러 온다. id는 100번부터, 계절마다 3마리.
@@ -486,7 +504,7 @@
   }
 
   root.Cat = {
-    buildCat, accessoryList, FUR_GRID, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
+    buildCat, accessoryList, FUR_GRID, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, starterGift, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
     POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
