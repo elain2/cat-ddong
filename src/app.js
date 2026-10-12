@@ -803,6 +803,10 @@
         interiorOpen = !interiorOpen;
         interiorCard.style.display = interiorOpen ? '' : 'none';
         handle.setEditMode(interiorOpen);
+        // 패널은 방 아래에 있어서, 칩을 누르려고 스크롤하면 방이 화면 밖으로 밀려난다.
+        // 열려 있는 동안은 방을 위에 붙여 두고, 닫으면 방이 보이는 위치로 되돌린다.
+        canvas.classList.toggle('sticky', interiorOpen);
+        if (!interiorOpen) canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
         renderInterior();
         if (interiorOpen) say('가구를 끌어서 옮겨 봐. 쿠션이나 침대 위엔 고양이를 올릴 수 있어!');
       },
