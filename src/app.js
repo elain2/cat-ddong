@@ -17,6 +17,8 @@
   const KEY_GIFTS = 'cat-ddong.gifts';        // 가진 선물 id 목록
   const KEY_TAKEN = 'cat-ddong.gift-taken';   // 이미 받은 선물 '슬롯:고양이id'
   const KEY_INTERIOR = 'cat-ddong.interior';  // 인테리어(벽지/바닥/러그/가구 배치)
+  const KEY_ENDING = 'cat-ddong.ending';      // 졸업앨범(방 이름, 단짝, 한마디, 테두리 색)
+  const KEY_CUSTOM = 'cat-ddong.custom';      // 완주 후 내가 만든 손님 고양이 설계도
   const KEY_PLAYER = 'cat-ddong.player';      // 사람마다 다른 시드 (손님/선물 순서가 친구와 겹치지 않게)
   const KEY_LOG = 'cat-ddong.log';   // 손님별 방문 기록 {id: {n, first, last, prev, slot}}
   const SLOT_MS = 30 * 60 * 1000;
@@ -32,6 +34,8 @@
       try { localStorage.removeItem(key); } catch (e) { /* 무시 */ }
     },
   };
+
+  Cat.setCustom(store.get(KEY_CUSTOM, null));   // 내가 만든 손님이 있으면 등록 (id 200)
 
   let picks = [];
   let cleanup = null; // 화면을 벗어날 때 정리할 것(애니메이션, 방)
@@ -169,6 +173,8 @@
       gifts: store.get(KEY_GIFTS, []),
       player: store.get(KEY_PLAYER, null),
       interior: store.get(KEY_INTERIOR, null),
+      ending: store.get(KEY_ENDING, null),
+      custom: store.get(KEY_CUSTOM, null),
     };
     const bytes = new TextEncoder().encode(JSON.stringify(data));
     return BACKUP_PREFIX + btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
@@ -208,7 +214,10 @@
       const gifts = Array.isArray(raw.gifts)
         ? [...new Set(raw.gifts.filter((g) => Cat.GIFT_IDS.includes(g)))] : [];
       const player = Number.isInteger(raw.player) && raw.player >= 0 && raw.player < 4294967296 ? raw.player : null;
-      return { me, met, log, snack, gifts, player, interior: Interior.clean(raw.interior) };
+      return {
+        me, met, log, snack, gifts, player, interior: Interior.clean(raw.interior),
+        ending: Ending.clean(raw.ending), custom: Cat.cleanCustom(raw.custom),
+      };
     } catch (e) {
       return null;
     }
@@ -231,7 +240,7 @@
     function recordVisits(ids) {
       const slotId = slotNow();
       let changed = false;
-      ids.forEach((id) => {
+      ids.filter((id) => id < Cat.CUSTOM_BASE).forEach((id) => {
         const e = log[id] || (log[id] = { n: 0, first: Date.now(), last: 0, prev: 0, slot: -1 });
         if (e.slot !== slotId) {
           e.prev = e.last; e.last = Date.now(); e.n += 1; e.slot = slotId;
@@ -264,7 +273,9 @@
       player = buf[0] >>> 0;
       store.set(KEY_PLAYER, player);
     }
-    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, curSeason, snackOn(), player);
+    // 내가 만든 손님은 도감 손님과 별개로 늘 놀러 온다.
+    const visitorIds = () => Cat.visitorsFor(Date.now(), 4, curSeason, snackOn(), player)
+      .concat(Cat.hasCustom() ? [Cat.CUSTOM_BASE] : []);
     const visitors = visitorIds();
     recordVisits(visitors);
     let visitorKey = `${slotNow()}:${visitors.join(',')}`;
@@ -278,7 +289,7 @@
     // 입은 것 전체가 들어간 복사본을 보여 준다. 원본(me)의 설문 악세사리와 worn은 그대로 둔다.
     const shown = () => Cat.dressed(me);
     const giftAvailable = (id) => {
-      if (id === undefined) return null;
+      if (id === undefined || id >= Cat.CUSTOM_BASE) return null;
       const slotId = slotNow();
       if (taken.has(`${slotId}:${id}`)) return null;
       return Cat.giftOf(id, slotId, player);
@@ -295,6 +306,7 @@
       wall: interior.wall, floor: interior.floor, rug: interior.rug,
       items: interior.items.map((it) => ({ id: it.id, x: it.x, y: it.y })),
     });
+    Room.setFrameStyle(Ending.frameStyleOf(Ending.clean(store.get(KEY_ENDING, null)), met, log));   // 단체사진 액자에 담길 모습
     const handle = Room.mount(canvas, {
       deco: interior,
       items: interior.items,
@@ -304,7 +316,7 @@
       visitors,
       snackOn,
       giftOf: giftAvailable,
-      isCollected: (k) => met.has(k),
+      isCollected: (k) => k >= Cat.CUSTOM_BASE || met.has(k),
       onReact(kind, a, b) {
         const x = a.cat.name, y = b.cat.name;
         const lines = {
@@ -328,7 +340,9 @@
           return;
         }
         const c = actor.cat;
-        if (met.has(actor.poolIndex)) {
+        if (c.custom) {
+          say(`${c.name}: ${c.title}. 집사가 직접 만들어 준 고양이야!`);
+        } else if (met.has(actor.poolIndex)) {
           const e = log[actor.poolIndex];
           const prevText = e && e.prev ? ` 지난번은 ${ago(e.prev)}이었어.` : '';
           say(`${c.name}: ${c.title}. ${e ? e.n : 1}번째 방문이야!${prevText}`);
@@ -348,9 +362,10 @@
           if (tierAfter > tierBefore) {
             say(`${bubble.textContent} 🛋 ${tierAfter === 1 ? '인테리어가 열렸어!' : '새 인테리어가 열렸어!'}`);
           }
+          if (met.size >= Ending.TOTAL()) completed(true);
           renderInterior();
         }
-        const gid = giftAvailable(actor.poolIndex);
+        const gid = c.custom ? null : giftAvailable(actor.poolIndex);
         if (gid) takeGift(actor, gid);
       },
     });
@@ -409,6 +424,20 @@
       }
       renderGifts();
       say(`${bubble.textContent} ${extra}`);
+    }
+
+    // 도감 완주: 금빛 리본을 선물함에 넣고 졸업앨범을 연다. (이미 완주한 저장본이면 조용히 처리)
+    function completed(justNow) {
+      if (met.size < Ending.TOTAL()) return;
+      let extra = '';
+      if (!owned.has('goldribbon')) {
+        owned.add('goldribbon');
+        store.set(KEY_GIFTS, [...owned]);
+        renderGifts();
+        extra = ' 🎀 금빛 리본이 선물함에 들어왔어!';
+      }
+      if (justNow) say(`🎉 도감을 전부 모았어!${extra} '졸업앨범'이 열렸어. 단체사진 액자도 인테리어에 생겼어.`);
+      updateEndingBtn();
     }
 
     function wear(id) {
@@ -560,6 +589,8 @@
         store.set(KEY_GIFTS, data.gifts);
         if (data.player !== null) store.set(KEY_PLAYER, data.player);
         store.set(KEY_INTERIOR, data.interior);
+        if (data.ending) store.set(KEY_ENDING, data.ending); else store.remove(KEY_ENDING);
+        if (data.custom) store.set(KEY_CUSTOM, data.custom); else store.remove(KEY_CUSTOM);
         location.reload();
       },
     });
@@ -821,6 +852,31 @@
     renderInterior();
 
     const brag = el('button', { className: 'btn', textContent: '🎬 자랑하기', onclick: openShowcase });
+
+    // 졸업앨범: 도감을 모두 모으면 열린다
+    function updateEndingBtn() {
+      const done = met.size >= Ending.TOTAL();
+      endingBtn.textContent = done ? '🎓 졸업앨범' : `🔒 졸업앨범 (도감 ${met.size}/${Ending.TOTAL()})`;
+      endingBtn.classList.toggle('locked', !done);
+    }
+    const endingBtn = el('button', {
+      className: 'btn ghost',
+      onclick: () => {
+        if (met.size < Ending.TOTAL()) {
+          say(`도감을 ${Ending.TOTAL()}마리(한정 손님 포함) 다 모으면 졸업앨범이 열려! 지금 ${met.size}마리야.`);
+          return;
+        }
+        Ending.open({
+          el, say, show, store, KEY_ENDING, KEY_CUSTOM, me, met, log,
+          meCat: shown(), deco: interior,
+          setCleanup: (f) => { cleanup = f; },
+          back: (msg) => { room(me); if (msg) say(msg); },
+          onChange: () => {},
+        });
+      },
+    });
+    completed(false);   // 이미 완주한 저장본이면 금빛 리본을 조용히 넣고 버튼을 연다
+    updateEndingBtn();
     const mine = el('button', { className: 'btn ghost', textContent: '내 모습 보기', onclick: () => result(shown(), me) });
     const again = el('button', {
       className: 'btn ghost', textContent: '다시 하기',
@@ -839,7 +895,7 @@
     });
 
     const giftCard = el('div', { className: 'card' }, [giftTitle, giftHint, giftGrid, el('div', { className: 'row gift-actions' }, [undressBtn])]);
-    show(canvas, snackBar, brag, interiorBtn, interiorCard, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, el('div', { className: 'row gift-actions' }, [photoBtn]), grid]),
+    show(canvas, snackBar, brag, endingBtn, interiorBtn, interiorCard, seasonRow, giftCard, el('div', { className: 'card' }, [bookTitle, bookHint, el('div', { className: 'row gift-actions' }, [photoBtn]), grid]),
       el('div', { className: 'card' }, [limitedTitle, limitedHint, limitedGrid]),
       backup,
       el('div', { className: 'row' }, [mine, rename, again]));

@@ -102,6 +102,7 @@
       shades: '선글라스를 썼어요 → 여름은 내 세상이에요.',
       leaf: '단풍잎을 얹었어요 → 가을 산책길이 제일 좋아요.',
       scarf: '목도리를 둘렀어요 → 따뜻한 게 최고예요.',
+      goldribbon: '금빛 리본을 맸어요 → 도감을 끝까지 채운 집사의 훈장이에요.',
     },
   };
 
@@ -119,6 +120,7 @@
     bandana: '반다나', medal: '메달', lei: '꽃목걸이',
     wings: '천사 날개', butterfly: '나비 날개', backpack: '배낭',
     fish: '생선', balloon: '풍선', icecream: '아이스크림',
+    goldribbon: '금빛 리본',
   };
 
   // 선물: 손님이 가끔 가져오는 악세사리. 호스트(내 고양이)가 착용할 수 있다.
@@ -126,7 +128,8 @@
   const EXTRA_GIFTS = ['crown', 'partyhat', 'flowers', 'cape', 'headphones', 'ribbonpin', 'pearl', 'shell',
     'beret', 'strawhat', 'santahat', 'monocle', 'heartglasses', 'sleepmask',
     'bandana', 'medal', 'lei', 'wings', 'butterfly', 'backpack', 'fish', 'balloon', 'icecream'];
-  const GIFT_IDS = ['tie', 'glasses', 'bell', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS);   // 술병은 선물에서 제외
+  // 술병은 선물에서 제외. 금빛 리본은 도감 완주 보상이라 손님이 들고 오지 않는다(EXTRA_GIFTS에 없음).
+  const GIFT_IDS = ['tie', 'glasses', 'bell', 'blossom', 'shades', 'leaf', 'scarf'].concat(EXTRA_GIFTS, ['goldribbon']);
   // 착용 자리(슬롯): 슬롯마다 하나씩, 서로 다른 슬롯은 같이 착용할 수 있다.
   const SLOTS = ['head', 'face', 'neck', 'back', 'hold'];
   const SLOT_LABEL = { head: '머리', face: '얼굴', neck: '목', back: '등', hold: '손' };
@@ -135,7 +138,7 @@
     ribbonpin: 'head', headphones: 'head', beret: 'head', strawhat: 'head', santahat: 'head',
     glasses: 'face', shades: 'face', monocle: 'face', heartglasses: 'face', sleepmask: 'face',
     bell: 'neck', scarf: 'neck', pearl: 'neck', shell: 'neck', bandana: 'neck', medal: 'neck', lei: 'neck',
-    bowtie: 'neck',
+    bowtie: 'neck', goldribbon: 'neck',
     cape: 'back', wings: 'back', butterfly: 'back', backpack: 'back',
     bottle: 'hold', fish: 'hold', balloon: 'hold', icecream: 'hold',
   };
@@ -401,8 +404,43 @@
     return limitedCache[i];
   }
 
-  // 도감 id → 고양이. 0~59는 일반 손님, 100~111은 시즌 한정 손님.
+  // 도감 완주 후 유저가 직접 만드는 손님. id 200 하나뿐이고 도감 수에는 들어가지 않는다.
+  const CUSTOM_BASE = 200;
+  const CUSTOM_FURS = ['cream', 'honey', 'orange', 'brown', 'white', 'blue', 'gray', 'black'];
+  let customSpec = null, customCache = null;
+  function cleanCustom(o) {
+    if (!o || typeof o !== 'object') return null;
+    const name = cleanOwner(o.name);
+    if (!name) return null;
+    const lv = (v) => (Number.isInteger(v) && v >= 0 && v <= 2 ? v : 1);
+    const one = (list, v, d) => (list.includes(v) ? v : d);
+    return {
+      name, fur: one(CUSTOM_FURS, o.fur, 'cream'), pattern: one(PATTERNS, o.pattern, 'plain'),
+      ear: one(EARS, o.ear, 'pointy'), tail: one(TAILS, o.tail, 'normal'),
+      build: one(BUILDS, o.build, 'normal'), coat: one(COATS, o.coat, 'smooth'),
+      energy: lv(o.energy), social: lv(o.social),
+      seed: Number.isFinite(o.seed) ? o.seed >>> 0 : hashStr('custom-' + name),
+    };
+  }
+  // 저장된 설계도를 등록한다. 없으면(null) 손님으로 오지 않는다.
+  function setCustom(spec) { customSpec = cleanCustom(spec); customCache = null; return customSpec; }
+  function customCat(spec) {
+    const c = cleanCustom(spec === undefined ? customSpec : spec);
+    if (!c) return null;
+    if (spec === undefined && customCache) return customCache;
+    const cat = finish({
+      energy: c.energy, social: c.social, delicacy: 1, boldness: 1, fur: c.fur, accessory: 'none',
+      accessory2: 'none', pattern: c.pattern, ear: c.ear, tail: c.tail, build: c.build, coat: c.coat,
+      chubby: c.build === 'chubby', seed: c.seed, owner: c.name,
+    });
+    cat.custom = true; cat.id = CUSTOM_BASE;
+    if (spec === undefined) customCache = cat;
+    return cat;
+  }
+
+  // 도감 id → 고양이. 0~59는 일반 손님, 100~111은 시즌 한정 손님, 200은 내가 만든 손님.
   function catById(id) {
+    if (id === CUSTOM_BASE) return customCat() || poolCat(0);
     return id >= LIMITED_BASE ? limitedCat(id - LIMITED_BASE) : poolCat(id);
   }
 
@@ -505,7 +543,8 @@
 
   root.Cat = {
     buildCat, accessoryList, FUR_GRID, autoName, isZipsa, withSignature, sameComboInAlbum, MARK_LABEL, normalizeCat, cleanOwner, giftOf, starterGift, GIFT_IDS, SLOTS, SLOT_LABEL, SLOT_OF, normalizeWorn, outfitOf, dressed, reasonsOf, rng, hashStr, fromSeed, poolCat, catById, visitorsFor, seasonOf,
-    POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, SEASONS, SEASON_NAME, limitedIdsOf,
+    POOL_SIZE, LIMITED_BASE, LIMITED_COUNT: LIMITED.length, CUSTOM_BASE, CUSTOM_FURS, PATTERNS, EARS, TAILS, BUILDS, COATS,
+    setCustom, customCat, cleanCustom, hasCustom: () => !!customSpec, SEASONS, SEASON_NAME, limitedIdsOf,
     FUR_LABEL, ACC_LABEL,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

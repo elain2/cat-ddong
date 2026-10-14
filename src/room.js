@@ -168,6 +168,14 @@
     }
   }
 
+  // 단체사진 액자에 담길 내용: 테두리 색과 단짝 고양이 털색(최대 3). 졸업앨범에서 정한다.
+  const FUR_HEX = {
+    cream: '#f6e3b8', honey: '#e8b84a', orange: '#f09a3e', brown: '#8a5a3a',
+    white: '#fffaf0', blue: '#8fa8c8', gray: '#a9a5b0', black: '#4a4352', butler: '#4a4352',
+  };
+  let frameStyle = { border: '#f2a64e', furs: [] };
+  function setFrameStyle(s) { frameStyle = Object.assign({ border: '#f2a64e', furs: [] }, s || {}); }
+
   // 가구 그림. (x, y)는 바닥에 닿는 아래쪽 가운데.
   function drawItem(ctx, id, x, y, t) {
     const R = (rx, ry, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(rx), Math.round(ry), w, h); };
@@ -203,6 +211,19 @@
       R(x - 11, y - 14, 22, 14, '#e8892a');
       R(x - 3, y - 14, 2, 14, '#c76f1a'); R(x + 3, y - 14, 2, 14, '#c76f1a');
       R(x - 2, y - 20, 4, 6, '#5b7a3a');
+    } else if (id === 'frame') {
+      edge(x - 11, y - 18, 22, 18);
+      R(x - 11, y - 18, 22, 18, frameStyle.border);
+      R(x - 9, y - 16, 18, 14, '#fff3e0');
+      R(x - 9, y - 16, 18, 1, '#e8d8b8');
+      const cols = frameStyle.furs.length ? frameStyle.furs : ['#d9c8a8', '#d9c8a8', '#d9c8a8'];
+      cols.slice(0, 3).forEach((c, i) => {                       // 단짝 3마리: 귀 + 얼굴
+        const cx = x - 8 + i * 6;
+        R(cx, y - 11, 1, 2, c); R(cx + 3, y - 11, 1, 2, c);
+        R(cx, y - 9, 5, 4, c);
+        R(cx + 1, y - 8, 1, 1, OUT); R(cx + 3, y - 8, 1, 1, OUT);
+      });
+      R(x - 9, y - 4, 18, 1, frameStyle.border);
     } else if (id === 'bear') {
       edge(x - 6, y - 8, 12, 8); R(x - 6, y - 8, 12, 8, '#b98c5a');
       edge(x - 5, y - 15, 10, 8); R(x - 5, y - 15, 10, 8, '#b98c5a');
@@ -718,5 +739,5 @@
     };
   }
 
-  root.Room = { mount, seasonOf, SEASONS, SEASON_LABEL, W, H, drawItem };
+  root.Room = { mount, seasonOf, SEASONS, SEASON_LABEL, W, H, drawItem, setFrameStyle, FUR_HEX };
 })(typeof window !== 'undefined' ? window : globalThis);

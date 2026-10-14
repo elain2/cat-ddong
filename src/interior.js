@@ -1,7 +1,7 @@
 // 인테리어: 도감을 모을수록 열리는 벽지/바닥/러그/가구. 카탈로그와 검증만 담당한다.
 (function (root) {
   // 만난 고양이 수(일반+한정 합계)에 따른 단계. 0이면 잠겨 있다.
-  const TIER_AT = [10, 20, 30];
+  const TIER_AT = [10, 20, 30, 72];   // 72 = 도감 완주 (일반 60 + 한정 12)
   const MAX_ITEMS = 8;
 
   const WALLS = [
@@ -31,6 +31,7 @@
     { id: 'tank', label: '어항', tier: 3, w: 24, h: 20, perch: false },
     { id: 'pumpkin', label: '호박', tier: 1, w: 22, h: 20, perch: false },
     { id: 'bear', label: '곰인형', tier: 3, w: 14, h: 16, perch: true },
+    { id: 'frame', label: '단체사진 액자', tier: 4, w: 22, h: 18, perch: false },   // 완주 보상. 졸업앨범에서 고른 단짝과 테두리 색이 담긴다
   ];
 
   const byId = (list, id) => list.find((o) => o.id === id);

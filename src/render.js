@@ -329,7 +329,7 @@
 
     // 액세서리: 등(망토) → 목 → 머리 → 얼굴 → 손 순서로 겹쳐 그린다
     const ORDER = { cape: 0, wings: 0, butterfly: 0, backpack: 0,
-      pearl: 1, shell: 1, scarf: 1, bell: 1, bandana: 1, medal: 1, lei: 1, bowtie: 1,
+      pearl: 1, shell: 1, scarf: 1, bell: 1, bandana: 1, medal: 1, lei: 1, bowtie: 1, goldribbon: 1,
       tie: 2, blossom: 2, leaf: 2, crown: 2, partyhat: 2, flowers: 2, ribbonpin: 2, headphones: 2,
       beret: 2, strawhat: 2, santahat: 2,
       glasses: 3, shades: 3, monocle: 3, heartglasses: 3, sleepmask: 3,
@@ -398,6 +398,16 @@
       for (let y = 21; y <= 25; y++) {
         for (let x = 19; x <= 22; x++) pset(g, x, y, (y % 3 === 0) ? B : A);
       }
+    } else if (acc === 'goldribbon') {
+      // 금빛 리본: 나비넥타이 모양에 금색, 아래로 리본 꼬리가 늘어진다
+      const G = '#f6c945', D = '#c8991a';
+      mr(18, 9, 11, G);
+      mr(19, 9, 14, G);
+      mr(20, 9, 14, G);
+      mr(21, 9, 11, G);
+      sp(19, 14, 17, D);
+      sp(20, 14, 17, D);
+      pset(g, 14, 21, G); pset(g, 17, 21, G); pset(g, 13, 22, D); pset(g, 18, 22, D);
     } else if (acc === 'bowtie') {
       // 나비넥타이: 양끝은 넓고 가운데는 좁다
       mr(18, 9, 11, RED);
