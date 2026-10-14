@@ -619,7 +619,8 @@
 
       const stage = Showcase.mount(canvas, {
         me: shown(),
-        cats: ids.map(Cat.catById),
+        // 내가 만든 손님은 도감 순서와 상관없이 늘 맨 앞(내 고양이 바로 뒤)으로 들어온다
+        cats: (Cat.hasCustom() ? [Cat.customCat()] : []).concat(ids.map(Cat.catById)),
         title: me.owner || me.name,
         stats: { met: n.normal, total: Cat.POOL_SIZE, limited: n.limited, limitedTotal: Cat.LIMITED_COUNT },
         season: curSeason,
