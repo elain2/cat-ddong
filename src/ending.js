@@ -139,7 +139,8 @@
   }
 
   // 사계절 영상: 모인 고양이들 뒤로 봄→여름→가을→겨울 배경이 4초씩 바뀐다. 방 화면을 큰 캔버스에 옮겨 그리며 녹화한다.
-  const SEASON_SEC = 4;
+  const SEASON_SEC = 5;
+  const DANCE_AT = 0.2;    // 계절이 시작되고 이만큼 지나면 출연진이 서둘러 모여 춤춘다
   const CAST_MAX = 5;
 
   // 계절마다 이야기가 있는 소규모 출연진 (도감 순서 = 처음 만난 순서). 나는 항상 함께 나온다.
@@ -181,9 +182,10 @@
     const seasons = Cat.SEASONS, total = seasons.length * SEASON_SEC;
     const original = handle.season;
     const t0 = performance.now();
-    let shown = '', timer = 0;
+    let shown = '', timer = 0, dancing = false;
     rec.onstop = () => {
       clearInterval(timer);
+      handle.setDance(null);
       handle.setSeason(original);
       handle.setVisitors(allIds());   // 화면은 다시 다 같이 모인 장면으로
       const type = rec.mimeType || mime || 'video/webm';
@@ -198,9 +200,10 @@
       if (t >= total) { if (rec.state === 'recording') rec.stop(); return; }
       const idx = Math.min(seasons.length - 1, Math.floor(t / SEASON_SEC));
       const season = seasons[idx];
-      if (season !== shown) { shown = season; handle.setSeason(season); handle.setVisitors(casts[idx].ids); }
-      x.drawImage(canvas, 0, 0, W, H);
       const into = t - idx * SEASON_SEC;
+      if (season !== shown) { shown = season; dancing = false; handle.setDance(null); handle.setSeason(season); handle.setVisitors(casts[idx].ids); }
+      if (into >= DANCE_AT && !dancing) { dancing = true; handle.setDance(idx); }   // 모여서 다 같이 춤
+      x.drawImage(canvas, 0, 0, W, H);
       if (idx > 0 && into < 0.4) { x.fillStyle = `rgba(255,255,255,${(1 - into / 0.4) * 0.8})`; x.fillRect(0, 0, W, H); }   // 계절이 바뀔 때 번쩍
       x.textAlign = 'left'; x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#fffaf0'; x.fillStyle = '#2b2333';
       x.font = FONT(36); x.strokeText(roomName, 28, 56); x.fillText(roomName, 28, 56);

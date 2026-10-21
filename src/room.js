@@ -281,6 +281,7 @@
     let deco = Object.assign({ wall: 'default', floor: 'wood', rug: 'default' }, opts.deco || {});
     let items = (opts.items || []).map((it) => Object.assign({}, it));
     let editMode = false;
+    let dance = null;      // 춤 모드: 0 콩콩 · 1 살랑살랑 · 2 빙글 · 3 스텝. null이면 평소대로
     let selected = null;   // 편집 중 선택한 가구 uid
     let lastMsg = -99;     // 마지막으로 말풍선 알림을 보낸 시간
 
@@ -352,6 +353,7 @@
       actors.forEach((a) => {
         a.clock += dt * 1000;
         if (a.held || a.perch) return;        // 잡혀 있거나 높은 곳에 앉아 있다
+        if (dance !== null && a.tx === null) return;   // 대형에 도착했으면 제자리에서 춤춘다
         if (a.tx === null) {
           a.wait -= dt;
           if (a.wait <= 0) {
@@ -374,11 +376,13 @@
         const dx = a.tx - a.x, dy = a.ty - a.y;
         const dist = Math.hypot(dx, dy);
         if (dist < 1) { a.tx = null; a.wait = rnd(3, 9); return; }
-        const speed = a.cat.chubby ? 9 : 16;
+        const speed = (a.cat.chubby ? 9 : 16) * (dance !== null ? 4 : 1);   // 춤 대형으로 모일 때는 서둘러 걷는다
         a.x += (dx / dist) * speed * dt;
         a.y += (dy / dist) * speed * dt;
         if (Math.abs(dx) > 1) a.flip = dx < 0;
       });
+
+      if (dance !== null) return;            // 춤추는 동안은 반응/내려다보기/간식 없음
 
       // 높은 곳(캣타워/선반/창틀)에 앉은 고양이가 가끔 아래를 내려다본다
       actors.forEach((a) => {
@@ -410,6 +414,34 @@
         if (a.held || a.emote || a.emoteCool > 0) return;
         const o = actors.find((c) => c !== a && near(a, c));
         if (o) react(a, o);
+      });
+    }
+
+    // 춤 동작: 스타일마다 박자와 몸짓이 다르다. 내 고양이는 조금 더 높이 뛴다.
+    function danceOf(a) {
+      const T = time, boost = a.isMe ? 1 : 0;
+      const beat = Math.floor(T * 6) % 2;
+      let hop = 0, dx = 0, flip = a.flip;
+      if (dance === 0) { hop = Math.round(Math.abs(Math.sin(T * 8)) * 4) + boost; flip = Math.floor(T * 2) % 2 === 0; }
+      else if (dance === 1) { dx = Math.round(Math.sin(T * 5) * 4); hop = Math.round(Math.abs(Math.sin(T * 10)) * 2) + boost; flip = Math.cos(T * 5) > 0; }
+      else if (dance === 2) { hop = Math.round(Math.abs(Math.sin(T * 9)) * 3) + boost; flip = Math.floor(T * 7) % 2 === 0; }
+      else { dx = Math.floor(T * 3) % 2 ? 3 : -3; hop = Math.round(Math.abs(Math.sin(T * 12)) * 2) + boost; flip = dx > 0; }
+      return { frame: a.frames[beat], dx, hop, flip };
+    }
+
+    // 춤 시작/끝. 시작하면 출연진이 방 가운데 한 줄로 모인 뒤 춤춘다(내 고양이가 센터).
+    function setDance(style) {
+      dance = Number.isInteger(style) ? style : null;
+      if (dance === null) return;
+      const b = bounds();
+      const others = actors.filter((a) => !a.isMe).sort((p, q) => p.x - q.x);
+      const row = others.slice();
+      row.splice(Math.floor((others.length + 1) / 2), 0, actors.find((a) => a.isMe));
+      const n = row.filter(Boolean).length;
+      row.filter(Boolean).forEach((a, i) => {
+        a.perch = null; a.emote = null; a.held = false;
+        a.tx = clamp((W - 32) / 2 - (n - 1) * 17 + i * 34, b.x0, b.x1);
+        a.ty = clamp(b.y0 + (b.y1 - b.y0) * 0.55 + (i % 2) * 5, b.y0, b.y1);
       });
     }
 
@@ -505,6 +537,12 @@
           ctx.fillRect(Math.round(a.x) + 8, Math.round(a.y) + 2, 16, 3);
           const sway = Math.floor(t / 160) % 2 ? 1 : 0;
           Render.drawGrid(ctx, a.frames[1], 1, Math.round(a.x) + sway, Math.round(a.y) - 31 - 5, a.flip);
+          return;
+        }
+        if (dance !== null && a.tx === null) {                // 춤: 모두 박자를 맞춰 움직인다
+          const d = danceOf(a);
+          Render.drawGrid(ctx, d.frame, 1, Math.round(a.x) + d.dx, Math.round(a.y) - 31 - d.hop, d.flip);
+          if (Math.floor(time * 4 + a.x) % 2 === 0) drawIcon(ctx, ICONS.note, Math.round(a.x) + 12, Math.round(a.y) - 46 - d.hop);
           return;
         }
         // 신난 고양이는 콩콩 뛴다
@@ -716,6 +754,7 @@
     return {
       setVisitors,
       setMe,
+      setDance,
       setDeco(d) { deco = Object.assign({ wall: 'default', floor: 'wood', rug: 'default' }, d || {}); },
       setEditMode(on) {
         editMode = !!on;
