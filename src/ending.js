@@ -165,6 +165,9 @@
       clearInterval(timer);
       handle.setSeason(original);
       const type = rec.mimeType || mime || 'video/webm';
+      if (!chunks.some((c) => c.size)) {   // 데이터가 하나도 안 왔으면 빈 파일을 저장하지 않는다
+        fail('녹화된 내용이 비어 있어요. 이 탭을 켜 둔 채로 다시 시도해 주세요.'); return;
+      }
       done(new Blob(chunks, { type }), type.includes('mp4') ? 'mp4' : 'webm');
     };
     const FONT = (px) => `${px}px Galmuri11, "Apple SD Gothic Neo", sans-serif`;
@@ -184,7 +187,7 @@
       x.strokeText(label, 28, 96); x.fillText(label, 28, 96);
       if (onProgress) onProgress(t / total);
     }
-    rec.start();
+    rec.start(1000);   // 1초마다 조각을 받아 둬서 끝에서 한꺼번에 비는 일을 막는다
     timer = setInterval(frame, 33);   // 탭이 가려져도 시간은 흘러서 녹화가 끝나도록 rAF 대신 타이머
   }
 
