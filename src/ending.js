@@ -162,9 +162,11 @@
     ];
   }
 
+  // 반환값: 도중에 그만두는 함수(저장하지 않는다)
   function recordSeasons(canvas, handle, casts, ending, roomName, done, fail, onProgress) {
+    const noop = () => {};
     if (!HTMLCanvasElement.prototype.captureStream || !root.MediaRecorder) {
-      fail('이 브라우저는 영상 저장을 지원하지 않아요. 앨범 PNG로 저장해 보세요.'); return;
+      fail('이 브라우저는 영상 저장을 지원하지 않아요. 앨범 PNG로 저장해 보세요.'); return noop;
     }
     const W = 960, H = Math.round(960 * canvas.height / canvas.width);   // 방 화면의 4배
     const off = document.createElement('canvas');
@@ -176,8 +178,9 @@
     let rec;
     try {
       rec = new MediaRecorder(off.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 5000000 } : undefined);
-    } catch (e) { fail('영상 녹화를 시작하지 못했어요.'); return; }
+    } catch (e) { fail('영상 녹화를 시작하지 못했어요.'); return noop; }
     const chunks = [];
+    let cancelled = false;
     rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
     const seasons = Cat.SEASONS, total = seasons.length * SEASON_SEC;
     const original = handle.season;
@@ -188,6 +191,7 @@
       handle.setDance(null);
       handle.setSeason(original);
       handle.setVisitors(allIds());   // 화면은 다시 다 같이 모인 장면으로
+      if (cancelled) return;
       const type = rec.mimeType || mime || 'video/webm';
       if (!chunks.some((c) => c.size)) {   // 데이터가 하나도 안 왔으면 빈 파일을 저장하지 않는다
         fail('녹화된 내용이 비어 있어요. 이 탭을 켜 둔 채로 다시 시도해 주세요.'); return;
@@ -210,11 +214,12 @@
       x.font = FONT(28); x.fillStyle = '#b8662a';
       const label = `${Cat.SEASON_NAME[season]} · ${casts[idx].title}`;
       x.strokeText(label, 28, 96); x.fillText(label, 28, 96);
-      if (onProgress) onProgress(t / total);
+      if (onProgress) onProgress(t / total, `${Cat.SEASON_NAME[season]} · ${casts[idx].title}`);
     }
     handle.setVisitors(casts[0].ids);   // 첫 장면부터 바글바글하지 않게 미리 출연진만 남긴다
     rec.start(1000);   // 1초마다 조각을 받아 둬서 끝에서 한꺼번에 비는 일을 막는다
     timer = setInterval(frame, 33);   // 탭이 가려져도 시간은 흘러서 녹화가 끝나도록 rAF 대신 타이머
+    return () => { cancelled = true; if (rec.state === 'recording') rec.stop(); clearInterval(timer); };
   }
 
   // ---- 졸업앨범 화면 ----
@@ -289,21 +294,24 @@
         } finally { albumBtn.disabled = false; }
       },
     });
-    const seasonBtn = el('button', {
-      className: 'btn', textContent: '🎬 사계절 영상으로 저장 (계절별 이야기)',
-      onclick: () => {
-        seasonBtn.disabled = albumBtn.disabled = true;
-        const finish = () => { seasonBtn.disabled = albumBtn.disabled = false; };
-        recordSeasons(canvas, handle, castFor(d, ending), ending, ending.room, (blob, ext) => {
-          const a = el('a', { href: URL.createObjectURL(blob), download: `${d.me.name}-사계절.${ext}` });
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-          note.textContent = ext === 'webm' ? '저장했어요! (webm 형식이에요. 인스타 등에는 mp4 변환이 필요할 수 있어요.)' : '저장했어요!';
-          finish();
-        }, (msg) => { note.textContent = msg; finish(); },
-        (p) => { note.textContent = `녹화 중이에요… ${Math.round(p * 100)}%  (탭을 켜 둔 채로 기다려 주세요)`; });
-      },
-    });
+    // 졸업앨범을 열면 사계절 이야기가 바로 재생되면서 영상으로 저장된다. 보다가 건너뛸 수 있다.
+    let cancelSeasons = () => {};
+    let gone = false;   // 화면을 벗어났으면 시작하지 않는다
+    const skipBtn = el('button', { className: 'btn ghost', textContent: '건너뛰기 (저장 안 함)' });
+    function playSeasons() {
+      if (gone) return;
+      albumBtn.disabled = true;
+      const finish = () => { albumBtn.disabled = false; skipBtn.style.display = 'none'; };
+      skipBtn.onclick = () => { cancelSeasons(); finish(); note.textContent = '건너뛰었어요. 앨범을 마음껏 꾸며 보세요!'; };
+      cancelSeasons = recordSeasons(canvas, handle, castFor(d, ending), ending, ending.room, (blob, ext) => {
+        const a = el('a', { href: URL.createObjectURL(blob), download: `${d.me.name}-사계절.${ext}` });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        note.textContent = ext === 'webm' ? '영상을 저장했어요! (webm 형식이에요. 인스타 등에는 mp4 변환이 필요할 수 있어요.)' : '영상을 저장했어요!';
+        finish();
+      }, (msg) => { note.textContent = msg; finish(); },
+      (p, label) => { note.textContent = `${label} — 영상으로 저장 중이에요 ${Math.round(p * 100)}% (탭을 켜 둔 채로 기다려 주세요)`; });
+    }
     const custom = Cat.hasCustom();
     const designBtn = el('button', {
       className: 'btn', textContent: custom ? '🐱 내가 만든 손님 고치기' : '🐱 다음 고양이는 내가 만들기',
@@ -315,9 +323,10 @@
       el('h3', { className: 'book-title', textContent: '단짝 고르기' }), bestHint, bestRow,
     ]);
     card.style.textAlign = 'left';
-    d.show(canvas, card, albumBtn, seasonBtn, note, designBtn,
+    d.show(canvas, note, skipBtn, card, albumBtn, designBtn,
       el('button', { className: 'btn ghost', textContent: '← 사랑방으로', onclick: d.back }));
-    d.setCleanup(() => handle.stop());
+    d.setCleanup(() => { gone = true; cancelSeasons(); handle.stop(); });
+    setTimeout(playSeasons, 600);   // 화면이 자리 잡은 뒤 시작
   }
 
   // ---- 내가 만드는 손님 ----
