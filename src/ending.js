@@ -140,7 +140,28 @@
 
   // 사계절 영상: 모인 고양이들 뒤로 봄→여름→가을→겨울 배경이 4초씩 바뀐다. 방 화면을 큰 캔버스에 옮겨 그리며 녹화한다.
   const SEASON_SEC = 4;
-  function recordSeasons(canvas, handle, ending, roomName, done, fail, onProgress) {
+  const CAST_MAX = 5;
+
+  // 계절마다 이야기가 있는 소규모 출연진 (도감 순서 = 처음 만난 순서). 나는 항상 함께 나온다.
+  function castFor(d, ending) {
+    const order = [...d.met];   // 만난 순서
+    const visits = (k) => (d.log[k] && d.log[k].n) || 0;
+    const byVisits = order.slice().sort((a, b) => visits(b) - visits(a) || a - b);
+    const uniq = (list) => [...new Set(list)];
+    const fill = (list, n) => uniq(list.concat(byVisits)).slice(0, n);   // 모자라면 자주 온 순으로 채운다
+    const sameFur = order.filter((k) => Cat.catById(k).fur === d.meCat.fur);
+    const winter = Cat.limitedIdsOf('winter').filter((k) => d.met.has(k))
+      .concat(Cat.hasCustom() ? [Cat.CUSTOM_BASE] : []);
+    return [
+      { title: '처음 만난 친구들', ids: order.slice(0, 4) },
+      { title: '단짝', ids: fill(bestOf(ending, d.met, d.log), MAX_BEST) },
+      { title: sameFur.length >= 2 ? '나와 털색이 같은 친구들' : '자주 놀러 온 친구들',
+        ids: sameFur.length >= 2 ? sameFur.slice(0, CAST_MAX) : byVisits.slice(0, CAST_MAX) },
+      { title: Cat.hasCustom() ? '새 식구' : '겨울 한정 손님', ids: fill(winter, Math.max(winter.length, 3)).slice(0, CAST_MAX) },
+    ];
+  }
+
+  function recordSeasons(canvas, handle, casts, ending, roomName, done, fail, onProgress) {
     if (!HTMLCanvasElement.prototype.captureStream || !root.MediaRecorder) {
       fail('이 브라우저는 영상 저장을 지원하지 않아요. 앨범 PNG로 저장해 보세요.'); return;
     }
@@ -164,6 +185,7 @@
     rec.onstop = () => {
       clearInterval(timer);
       handle.setSeason(original);
+      handle.setVisitors(allIds());   // 화면은 다시 다 같이 모인 장면으로
       const type = rec.mimeType || mime || 'video/webm';
       if (!chunks.some((c) => c.size)) {   // 데이터가 하나도 안 왔으면 빈 파일을 저장하지 않는다
         fail('녹화된 내용이 비어 있어요. 이 탭을 켜 둔 채로 다시 시도해 주세요.'); return;
@@ -176,17 +198,18 @@
       if (t >= total) { if (rec.state === 'recording') rec.stop(); return; }
       const idx = Math.min(seasons.length - 1, Math.floor(t / SEASON_SEC));
       const season = seasons[idx];
-      if (season !== shown) { shown = season; handle.setSeason(season); }
+      if (season !== shown) { shown = season; handle.setSeason(season); handle.setVisitors(casts[idx].ids); }
       x.drawImage(canvas, 0, 0, W, H);
       const into = t - idx * SEASON_SEC;
       if (idx > 0 && into < 0.4) { x.fillStyle = `rgba(255,255,255,${(1 - into / 0.4) * 0.8})`; x.fillRect(0, 0, W, H); }   // 계절이 바뀔 때 번쩍
       x.textAlign = 'left'; x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#fffaf0'; x.fillStyle = '#2b2333';
       x.font = FONT(36); x.strokeText(roomName, 28, 56); x.fillText(roomName, 28, 56);
       x.font = FONT(28); x.fillStyle = '#b8662a';
-      const label = `${Cat.SEASON_NAME[season]} · 도감 ${TOTAL()}/${TOTAL()}`;
+      const label = `${Cat.SEASON_NAME[season]} · ${casts[idx].title}`;
       x.strokeText(label, 28, 96); x.fillText(label, 28, 96);
       if (onProgress) onProgress(t / total);
     }
+    handle.setVisitors(casts[0].ids);   // 첫 장면부터 바글바글하지 않게 미리 출연진만 남긴다
     rec.start(1000);   // 1초마다 조각을 받아 둬서 끝에서 한꺼번에 비는 일을 막는다
     timer = setInterval(frame, 33);   // 탭이 가려져도 시간은 흘러서 녹화가 끝나도록 rAF 대신 타이머
   }
@@ -264,11 +287,11 @@
       },
     });
     const seasonBtn = el('button', {
-      className: 'btn', textContent: '🎬 사계절 영상으로 저장',
+      className: 'btn', textContent: '🎬 사계절 영상으로 저장 (계절별 이야기)',
       onclick: () => {
         seasonBtn.disabled = albumBtn.disabled = true;
         const finish = () => { seasonBtn.disabled = albumBtn.disabled = false; };
-        recordSeasons(canvas, handle, ending, ending.room, (blob, ext) => {
+        recordSeasons(canvas, handle, castFor(d, ending), ending, ending.room, (blob, ext) => {
           const a = el('a', { href: URL.createObjectURL(blob), download: `${d.me.name}-사계절.${ext}` });
           a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 2000);
