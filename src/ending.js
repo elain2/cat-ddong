@@ -138,6 +138,56 @@
     return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
   }
 
+  // 사계절 영상: 모인 고양이들 뒤로 봄→여름→가을→겨울 배경이 4초씩 바뀐다. 방 화면을 큰 캔버스에 옮겨 그리며 녹화한다.
+  const SEASON_SEC = 4;
+  function recordSeasons(canvas, handle, ending, roomName, done, fail, onProgress) {
+    if (!HTMLCanvasElement.prototype.captureStream || !root.MediaRecorder) {
+      fail('이 브라우저는 영상 저장을 지원하지 않아요. 앨범 PNG로 저장해 보세요.'); return;
+    }
+    const W = 960, H = Math.round(960 * canvas.height / canvas.width);   // 방 화면의 4배
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const x = off.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    const mimes = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    const mime = mimes.find((m) => root.MediaRecorder.isTypeSupported(m)) || '';
+    let rec;
+    try {
+      rec = new MediaRecorder(off.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 5000000 } : undefined);
+    } catch (e) { fail('영상 녹화를 시작하지 못했어요.'); return; }
+    const chunks = [];
+    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    const seasons = Cat.SEASONS, total = seasons.length * SEASON_SEC;
+    const original = handle.season;
+    const t0 = performance.now();
+    let shown = '', timer = 0;
+    rec.onstop = () => {
+      clearInterval(timer);
+      handle.setSeason(original);
+      const type = rec.mimeType || mime || 'video/webm';
+      done(new Blob(chunks, { type }), type.includes('mp4') ? 'mp4' : 'webm');
+    };
+    const FONT = (px) => `${px}px Galmuri11, "Apple SD Gothic Neo", sans-serif`;
+    function frame() {
+      const t = (performance.now() - t0) / 1000;
+      if (t >= total) { if (rec.state === 'recording') rec.stop(); return; }
+      const idx = Math.min(seasons.length - 1, Math.floor(t / SEASON_SEC));
+      const season = seasons[idx];
+      if (season !== shown) { shown = season; handle.setSeason(season); }
+      x.drawImage(canvas, 0, 0, W, H);
+      const into = t - idx * SEASON_SEC;
+      if (idx > 0 && into < 0.4) { x.fillStyle = `rgba(255,255,255,${(1 - into / 0.4) * 0.8})`; x.fillRect(0, 0, W, H); }   // 계절이 바뀔 때 번쩍
+      x.textAlign = 'left'; x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#fffaf0'; x.fillStyle = '#2b2333';
+      x.font = FONT(36); x.strokeText(roomName, 28, 56); x.fillText(roomName, 28, 56);
+      x.font = FONT(28); x.fillStyle = '#b8662a';
+      const label = `${Cat.SEASON_NAME[season]} · 도감 ${TOTAL()}/${TOTAL()}`;
+      x.strokeText(label, 28, 96); x.fillText(label, 28, 96);
+      if (onProgress) onProgress(t / total);
+    }
+    rec.start();
+    timer = setInterval(frame, 33);   // 탭이 가려져도 시간은 흘러서 녹화가 끝나도록 rAF 대신 타이머
+  }
+
   // ---- 졸업앨범 화면 ----
   // d: { el, say, show, setCleanup, store, KEY_ENDING, KEY_CUSTOM, me, meCat, met, log, deco, back, onChange }
   function open(d) {
@@ -210,6 +260,21 @@
         } finally { albumBtn.disabled = false; }
       },
     });
+    const seasonBtn = el('button', {
+      className: 'btn', textContent: '🎬 사계절 영상으로 저장',
+      onclick: () => {
+        seasonBtn.disabled = albumBtn.disabled = true;
+        const finish = () => { seasonBtn.disabled = albumBtn.disabled = false; };
+        recordSeasons(canvas, handle, ending, ending.room, (blob, ext) => {
+          const a = el('a', { href: URL.createObjectURL(blob), download: `${d.me.name}-사계절.${ext}` });
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+          note.textContent = ext === 'webm' ? '저장했어요! (webm 형식이에요. 인스타 등에는 mp4 변환이 필요할 수 있어요.)' : '저장했어요!';
+          finish();
+        }, (msg) => { note.textContent = msg; finish(); },
+        (p) => { note.textContent = `녹화 중이에요… ${Math.round(p * 100)}%  (탭을 켜 둔 채로 기다려 주세요)`; });
+      },
+    });
     const custom = Cat.hasCustom();
     const designBtn = el('button', {
       className: 'btn', textContent: custom ? '🐱 내가 만든 손님 고치기' : '🐱 다음 고양이는 내가 만들기',
@@ -221,7 +286,7 @@
       el('h3', { className: 'book-title', textContent: '단짝 고르기' }), bestHint, bestRow,
     ]);
     card.style.textAlign = 'left';
-    d.show(canvas, card, albumBtn, note, designBtn,
+    d.show(canvas, card, albumBtn, seasonBtn, note, designBtn,
       el('button', { className: 'btn ghost', textContent: '← 사랑방으로', onclick: d.back }));
     d.setCleanup(() => handle.stop());
   }
