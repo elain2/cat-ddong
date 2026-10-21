@@ -31,6 +31,7 @@
     return {
       room: text(raw.room, 12), msg: text(raw.msg, 60), best, frame,
       at: Number.isFinite(raw.at) && raw.at > 0 ? raw.at : 0,
+      played: raw.played === true,   // 사계절 영상을 이미 한 번 틀었는지
     };
   }
 
@@ -294,7 +295,7 @@
         } finally { albumBtn.disabled = false; }
       },
     });
-    // 졸업앨범을 열면 사계절 이야기가 바로 재생되면서 영상으로 저장된다. 보다가 건너뛸 수 있다.
+    // 졸업앨범을 처음 열면 사계절 이야기가 바로 재생되면서 영상으로 저장된다. 보다가 건너뛸 수 있다.
     let cancelSeasons = () => {};
     let gone = false;   // 화면을 벗어났으면 시작하지 않는다
     const skipBtn = el('button', { className: 'btn ghost', textContent: '건너뛰기 (저장 안 함)' });
@@ -326,7 +327,12 @@
     d.show(canvas, note, skipBtn, card, albumBtn, designBtn,
       el('button', { className: 'btn ghost', textContent: '← 사랑방으로', onclick: d.back }));
     d.setCleanup(() => { gone = true; cancelSeasons(); handle.stop(); });
-    setTimeout(playSeasons, 600);   // 화면이 자리 잡은 뒤 시작
+    if (!ending.played) {            // 처음 열 때만 사계절 영상을 튼다
+      ending.played = true; save();
+      setTimeout(playSeasons, 600);   // 화면이 자리 잡은 뒤 시작
+    } else {
+      skipBtn.style.display = 'none';
+    }
   }
 
   // ---- 내가 만드는 손님 ----
